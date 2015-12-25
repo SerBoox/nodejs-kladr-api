@@ -1,0 +1,22 @@
+[
+  {
+    "name": "name",
+    "value": "张三"
+  },
+  {
+    "name": "gender",
+    "value": false
+  },
+  {
+    "name": "birthday",
+    "value": "1935-02-01T16:00:00.000Z"
+  },
+  {
+    "name": "stature",
+    "value": 1.87
+  },
+  {
+    "name": "registDate",
+    "value": "2014-09-02T16:01:13.000Z"
+  }
+]

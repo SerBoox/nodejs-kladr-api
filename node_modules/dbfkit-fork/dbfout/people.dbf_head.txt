@@ -1,0 +1,44 @@
+{
+  "version": "3",
+  "updatedDate": "2014-09-02T16:00:00.000Z",
+  "recordsCount": 2,
+  "headOffset": 193,
+  "recordLength": 541,
+  "fields": [
+    {
+      "name": "name",
+      "type": "C",
+      "address": 0,
+      "length": 255,
+      "precision": 0
+    },
+    {
+      "name": "gender",
+      "type": "L",
+      "address": 0,
+      "length": 1,
+      "precision": 0
+    },
+    {
+      "name": "birthday",
+      "type": "D",
+      "address": 0,
+      "length": 8,
+      "precision": 0
+    },
+    {
+      "name": "stature",
+      "type": "N",
+      "address": 0,
+      "length": 21,
+      "precision": 2
+    },
+    {
+      "name": "registDate",
+      "type": "C",
+      "address": 0,
+      "length": 255,
+      "precision": 0
+    }
+  ]
+}
