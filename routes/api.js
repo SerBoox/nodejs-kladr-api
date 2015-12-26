@@ -10,12 +10,10 @@ var getMySQLObject = require('../controllers/getMySQLObject.js');
 
 /* GET home page. */
 router.get('/', function (req, res, next) {
-
-    var request = [];
+    var record, connection;
     var i = 0;
-
-    var record;
-    var connection;
+    var request = [];
+    var rowsNumder = 1;
     var recordsCount = 0;
 
     //Parameters MySQL connection
@@ -32,36 +30,45 @@ router.get('/', function (req, res, next) {
         console.log('Start MySQL connection');
     });
 
-    //var tableDBF = parameters.DBF.ALTNAMES;
+    var tableDBF = parameters.DBF.ALTNAMES;
     //var tableDBF = parameters.DBF.DOMA;
     //var tableDBF = parameters.DBF.FLAT;
     //var tableDBF = parameters.DBF.KLADR;
-    var tableDBF = parameters.DBF.SOCRBASE;
+    //var tableDBF = parameters.DBF.SOCRBASE;
     //var tableDBF = parameters.DBF.STREET;
+
 
     dbfParser = new DBFParser(tableDBF.path + tableDBF.file, tableDBF.charset);
 
     dbfParser.on('head', function (head) {
         //return console.log(head);
-        recordsCount = head.recordsCount;
+        if (rowsNumder === 0)
+            recordsCount = head.recordsCount;
+        else
+            recordsCount = rowsNumder;
         //Указываем максимальное число эмиттеров
-        eventEmitter.setMaxListeners(recordsCount);
+        if (recordsCount < 70)
+            eventEmitter.setMaxListeners(70);
+        else
+            eventEmitter.setMaxListeners(recordsCount);
     });
 
     dbfParser.on('record', function (data) {
         i++;
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && (
+                (rowsNumder === 0) || (rowsNumder >= i)
+            )) {
             if (data[0].id === undefined)
                 data.unshift({id: i});
             else
                 data[0] = {id: i};
 
-            data.forEach(function(currentValue,index){
-              if(currentValue.value == null)
-                  data[index].value = '';
+            data.forEach(function (currentValue, index) {
+                if (currentValue.value == null)
+                    data[index].value = '';
             });
 
-            var object = getMySQLObject(tableDBF.mysql_table,data);
+            var object = getMySQLObject(tableDBF.mysql_table, data);
 
             //Enable Record Emitter
             eventEmitter.emit('record_mysql_table', connection, tableDBF.mysql_table, object, recordsCount);
@@ -112,7 +119,9 @@ var startDbRecordTime; //milliseconds
 var finishDbRecordTime; //milliseconds
 eventEmitter.on('record_mysql_table', function (connection, mysql_table, data, recordsCount) {
     j++;
-    if (j === 1) {
+
+    if (j == 1) {
+        console.log('Очистка базы: `'+ mysql_table +'` запущенна');
         eventEmitter.emit('reset_mysql_table', connection, mysql_table);
         startDbRecordTime = new Date().getTime();
     }
@@ -125,7 +134,8 @@ eventEmitter.on('record_mysql_table', function (connection, mysql_table, data, r
             }
         }
     );
-    if (j === recordsCount) {
+
+    if (j == recordsCount) {
         connection.end(function () {
             finishDbRecordTime = new Date().getTime();
             console.log('Finish MySQL connection.Record time: ' + (finishDbRecordTime - startDbRecordTime));
