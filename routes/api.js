@@ -13,7 +13,13 @@ router.get('/', function (req, res, next) {
     var recordsCount = 0;
 
     var pathName = './public/dbf/';
-    var fileName = 'SOCRBASE.DBF';
+
+    //var fileName = 'ALTNAMES.DBF'; //62 655 строк
+    //var fileName = 'DOMA.DBF'; //2 657 477 строк
+    //var fileName = 'FLAT.DBF'; //0 строк
+    //var fileName = 'KLADR.DBF'; //220 186 строк
+    var fileName = 'SOCRBASE.DBF'; //167 строк
+    //var fileName = 'STREET.DBF'; //1 103 363 строк
 
     dbfParser = new DBFParser(pathName + fileName, "CP866");
 
@@ -24,7 +30,7 @@ router.get('/', function (req, res, next) {
 
     dbfParser.on('record', function (record) {
         //console.log(record);
-        eventEmitter.emit('dataModified', record);
+        //eventEmitter.emit('dataModified', record);
     });
 
     dbfParser.on('end', function () {

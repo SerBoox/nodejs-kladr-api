@@ -1,0 +1,26 @@
+{
+  "DataBase":{
+    "kladr_dbf":{
+      "name": "klard_dbf",
+      "address": "127.0.0.1",
+      "port": "3306",
+      "login": "kladr",
+      "password": "TcutJVVCZURnhQ3H"
+    },
+    "kladr_buffer":{
+      "name": "kladr_buffer",
+      "address": "127.0.0.1",
+      "port": "3306",
+      "login": "kladr",
+      "password": "TcutJVVCZURnhQ3H"
+    },
+    "kladr_used":{
+      "name": "kladr_used",
+      "address": "127.0.0.1",
+      "port": "3306",
+      "login": "kladr",
+      "password": "TcutJVVCZURnhQ3H"
+    }
+  },
+  "version": "0.0.1"
+}

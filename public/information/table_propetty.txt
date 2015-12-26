@@ -1,0 +1,110 @@
+    var fileName = 'ALTNAMES.DBF'; //62 655 строк
+
+     { version: '3',
+       updatedDate: Tue Dec 21 1915 00:00:00 GMT+0300 (RTZ 2 (зима)),
+       recordsCount: 62655,
+       headOffset: 129,
+       recordLength: 40,
+       fields:
+        [ { name: 'OLDCODE',
+            type: 'C',
+            address: 1,
+            length: 19,
+            precision: 0 },
+          { name: 'NEWCODE',
+            type: 'C',
+            address: 20,
+            length: 19,
+            precision: 0 },
+          { name: 'LEVEL', type: 'C', address: 39, length: 1, precision: 0 } ] }
+
+/*---------------------------------------------------------------------------------------------------
+    //var fileName = 'DOMA.DBF'; //2 657 477 строк
+
+    { version: '3',
+      updatedDate: Tue Dec 21 1915 00:00:00 GMT+0300 (RTZ 2 (зима)),
+      recordsCount: 2657477,
+      headOffset: 289,
+      recordLength: 105,
+      fields:
+       [ { name: 'NAME', type: 'C', address: 1, length: 40, precision: 0 },
+         { name: 'KORP', type: 'C', address: 41, length: 10, precision: 0 },
+         { name: 'SOCR', type: 'C', address: 51, length: 10, precision: 0 },
+         { name: 'CODE', type: 'C', address: 61, length: 19, precision: 0 },
+         { name: 'INDEX', type: 'C', address: 80, length: 6, precision: 0 },
+         { name: 'GNINMB', type: 'C', address: 86, length: 4, precision: 0 },
+         { name: 'UNO', type: 'C', address: 90, length: 4, precision: 0 },
+         { name: 'OCATD', type: 'C', address: 94, length: 11, precision: 0 } ] }
+
+/*---------------------------------------------------------------------------------------------------
+    //var fileName = 'FLAT.DBF'; //0 строк
+
+{ version: '3',
+  updatedDate: Tue Dec 21 1915 00:00:00 GMT+0300 (RTZ 2 (зима)),
+  recordsCount: 0,
+  headOffset: 225,
+  recordLength: 82,
+  fields:
+   [ { name: 'CODE', type: 'C', address: 1, length: 23, precision: 0 },
+     { name: 'NP', type: 'C', address: 24, length: 4, precision: 0 },
+     { name: 'GNINMB', type: 'C', address: 28, length: 4, precision: 0 },
+     { name: 'NAME', type: 'C', address: 32, length: 40, precision: 0 },
+     { name: 'INDEX', type: 'C', address: 72, length: 6, precision: 0 },
+     { name: 'UNO', type: 'C', address: 78, length: 4, precision: 0 } ] }
+
+/*---------------------------------------------------------------------------------------------------
+    //var fileName = 'KLADR.DBF'; //220 186 строк
+
+{ version: '3',
+  updatedDate: Tue Dec 21 1915 00:00:00 GMT+0300 (RTZ 2 (зима)),
+  recordsCount: 220186,
+  headOffset: 289,
+  recordLength: 90,
+  fields:
+   [ { name: 'NAME', type: 'C', address: 1, length: 40, precision: 0 },
+     { name: 'SOCR', type: 'C', address: 41, length: 10, precision: 0 },
+     { name: 'CODE', type: 'C', address: 51, length: 13, precision: 0 },
+     { name: 'INDEX', type: 'C', address: 64, length: 6, precision: 0 },
+     { name: 'GNINMB', type: 'C', address: 70, length: 4, precision: 0 },
+     { name: 'UNO', type: 'C', address: 74, length: 4, precision: 0 },
+     { name: 'OCATD', type: 'C', address: 78, length: 11, precision: 0 },
+     { name: 'STATUS', type: 'C', address: 89, length: 1, precision: 0 } ] }
+
+/*---------------------------------------------------------------------------------------------------
+    //var fileName = 'SOCRBASE.DBF'; //167 строк
+
+    { version: '3',
+      updatedDate: Tue Dec 21 1915 00:00:00 GMT+0300 (RTZ 2 (зима)),
+      recordsCount: 167,
+      headOffset: 161,
+      recordLength: 48,
+      fields:
+       [ { name: 'LEVEL', type: 'C', address: 1, length: 5, precision: 0 },
+         { name: 'SCNAME', type: 'C', address: 6, length: 10, precision: 0 },
+         { name: 'SOCRNAME',
+           type: 'C',
+           address: 16,
+           length: 29,
+           precision: 0 },
+         { name: 'KOD_T_ST',
+           type: 'C',
+           address: 45,
+           length: 3,
+           precision: 0 } ] }
+
+/*---------------------------------------------------------------------------------------------------
+    //var fileName = 'STREET.DBF'; //1 103 363 строк
+
+    { version: '3',
+      updatedDate: Tue Dec 21 1915 00:00:00 GMT+0300 (RTZ 2 (зима)),
+      recordsCount: 1103363,
+      headOffset: 257,
+      recordLength: 93,
+      fields:
+       [ { name: 'NAME', type: 'C', address: 1, length: 40, precision: 0 },
+         { name: 'SOCR', type: 'C', address: 41, length: 10, precision: 0 },
+         { name: 'CODE', type: 'C', address: 51, length: 17, precision: 0 },
+         { name: 'INDEX', type: 'C', address: 68, length: 6, precision: 0 },
+         { name: 'GNINMB', type: 'C', address: 74, length: 4, precision: 0 },
+         { name: 'UNO', type: 'C', address: 78, length: 4, precision: 0 },
+         { name: 'OCATD', type: 'C', address: 82, length: 11, precision: 0 } ] }
