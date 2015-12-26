@@ -1,26 +1,63 @@
 {
-  "DataBase":{
-    "kladr_dbf":{
-      "name": "klard_dbf",
-      "address": "127.0.0.1",
-      "port": "3306",
-      "login": "kladr",
-      "password": "TcutJVVCZURnhQ3H"
+  "DBF": {
+    "ALTNAMES": {
+      "path": "./public/dbf/",
+      "file": "ALTNAMES.DBF",
+      "charset": "CP866",
+      "mysql_table": "altnames"
     },
-    "kladr_buffer":{
-      "name": "kladr_buffer",
-      "address": "127.0.0.1",
-      "port": "3306",
-      "login": "kladr",
-      "password": "TcutJVVCZURnhQ3H"
+    "DOMA": {
+      "path": "./public/dbf/",
+      "file": "DOMA.DBF",
+      "charset": "CP866",
+      "mysql_table": "doma"
     },
-    "kladr_used":{
-      "name": "kladr_used",
-      "address": "127.0.0.1",
-      "port": "3306",
-      "login": "kladr",
-      "password": "TcutJVVCZURnhQ3H"
+    "FLAT": {
+      "path": "./public/dbf/",
+      "file": "FLAT.DBF",
+      "charset": "CP866",
+      "mysql_table": "flat"
+    },
+    "KLADR": {
+      "path": "./public/dbf/",
+      "file": "KLADR.DBF",
+      "charset": "CP866",
+      "mysql_table": "kladr"
+    },
+    "SOCRBASE": {
+      "path": "./public/dbf/",
+      "file": "SOCRBASE.DBF",
+      "charset": "CP866",
+      "mysql_table": "socrbase"
+    },
+    "STREET": {
+      "path": "./public/dbf/",
+      "file": "STREET.DBF",
+      "charset": "CP866",
+      "mysql_table": "street"
     }
   },
-  "version": "0.0.1"
+  "DataBase": {
+    "kladr_dbf": {
+      "name": "kladr_dbf",
+      "host": "127.0.0.1",
+      "port": "3306",
+      "user": "kladr",
+      "password": "TcutJVVCZURnhQ3H"
+    },
+    "kladr_buffer": {
+      "name": "kladr_buffer",
+      "host": "127.0.0.1",
+      "port": "3306",
+      "user": "kladr",
+      "password": "TcutJVVCZURnhQ3H"
+    },
+    "kladr_used": {
+      "name": "kladr_used",
+      "host": "127.0.0.1",
+      "port": "3306",
+      "user": "kladr",
+      "password": "TcutJVVCZURnhQ3H"
+    }
+  }
 }
