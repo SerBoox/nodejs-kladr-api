@@ -8,14 +8,22 @@ var merge = require('merge'), original, cloned;
 var mysql = require('mysql');
 var parameters = require('../config/parameters.json');
 var getMySQLObject = require('../controllers/getMySQLObject.js');
-var fs = require('fs');
+var dbLock = 0;
+var dataBuffer;
 
 /* GET home page. */
 router.get('/', function (req, res, next) {
     var record, recordsCount;
     var i = 0;
     var request = [];
-    var rowsNumder = 622;
+    var rowsNumder = 10000;
+
+    if (dbLock !== 0) {
+        return res.send({
+            read: i,
+            write: j
+        });
+    }
 
     //var tableDBF = parameters.DBF.ALTNAMES;
     var tableDBF = parameters.DBF.DOMA;
@@ -68,10 +76,12 @@ router.get('/', function (req, res, next) {
 
         //Show result
         if (i === recordsCount) {
+            dataBuffer = data;
             res.send(data); //Show data
+            i = 0;
         }
     });
-    i = 0;
+
 
     dbfParser.on('end', function () {
         if (recordsCount == 0) res.send('File: ' + tableDBF.file + ' is empty.'); //Show Data
@@ -88,23 +98,30 @@ var connection;
 
 eventEmitter.on('record_mysql_table', function (mysql_table, data, recordsCount) {
     j++;
-    if (j == 1)
-        connection = startMySQLConnection();
+    dbLock++;
+    if (j == 1) {
+        //Parameters MySQL connection
+        var tableMySQL = parameters.DataBase.kladr_dbf;
+        connection = mysql.createConnection({
+            host: tableMySQL.host,
+            port: tableMySQL.port,
+            connectTimeout: 120000,
+            database: tableMySQL.name,
+            user: tableMySQL.user,
+            password: tableMySQL.password
+        });
+        //MySQL Connection
+        connection.connect(function () {
+            console.log('Start MySQL connection');
+        });
+    }
 
     if (j == 1) {
         eventEmitter.emit('reset_mysql_table', connection, mysql_table);
         startDbRecordTime = new Date().getTime();
-    }
-
-    connection
-        .query('INSERT INTO ?? SET ?', [mysql_table, data],
-            function (error) {
-                if (error !== null) {
-                    console.log("MySQL id: " + j);
-                    console.log("MySQL Error: " + error);
-                }
-            }
-        );
+        recordInMySQLTable(mysql_table, data);
+    } else
+        recordInMySQLTable(mysql_table, data);
 
     if (j == recordsCount) {
         connection.end(function () {
@@ -112,25 +129,18 @@ eventEmitter.on('record_mysql_table', function (mysql_table, data, recordsCount)
             console.log('Finish MySQL connection.Record time: ' + (finishDbRecordTime - startDbRecordTime));
         });
         j = 0;
+        dbLock = 0;
     }
 });
-
-function startMySQLConnection() {
-    //Parameters MySQL connection
-    var tableMySQL = parameters.DataBase.kladr_dbf;
-    var connection = mysql.createConnection({
-        host: tableMySQL.host,
-        port: tableMySQL.port,
-        connectTimeout: 120000,
-        database: tableMySQL.name,
-        user: tableMySQL.user,
-        password: tableMySQL.password
-    });
-    //MySQL Connection
-    connection.connect(function () {
-        console.log('Start MySQL connection');
-    });
-    return connection;
+function recordInMySQLTable(mysql_table, data) {
+    connection.query('INSERT INTO ?? SET ?', [mysql_table, data],
+        function (error) {
+            if (error !== null) {
+                console.log("MySQL id: " + j);
+                console.log("MySQL Error: " + error);
+            }
+        }
+    );
 }
 
 eventEmitter.on('reset_mysql_table', function (connection, mysql_table) {

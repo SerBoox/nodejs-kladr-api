@@ -58,6 +58,7 @@
                     console.log('Emit end enable this.on end');
                     readableStream.destroy();
                     readableStream.close();
+                    i_i = 0;
                 }
             })(this));
 
@@ -71,20 +72,23 @@
                 .on('data', (function (_this) {
                     return function (buffer) {
                         i_i++;
-                        console.log('Read .on data id: ' + i_i);
-                        console.log(buffer);
-                        console.log('Buffer length:' + buffer.length);
                         if (i_i === 1) {
+                            //console.log('Read .on data id: ' + i_i);
+                            //console.log(buffer);
+                            //console.log('Buffer length:' + buffer.length);
                             _this._parseHead(buffer);
                             _this._parseRecords(buffer);
                         }
                         else {
+                            //console.log('Read .on data id: ' + i_i);
+                            //console.log(buffer);
+                            //console.log('Buffer length:' + buffer.length);
                             _this._parseRecords(buffer);
                         }
-
                     }
                 })(this))
                 .on('error', function (error) {
+                    i_i = 0;
                     throw error;
                 })
                 .on('close', (function (_this) {
@@ -145,9 +149,6 @@
             var residueBufferSuccess, head_coif, bufferTemp, curPoint, deletedFlag, endPoint, field, i, point, record, _i, _j, _len, _ref, _ref1, _ref2, _results;
             endPoint = this.headOffset + this.recordLength * this.recordsCount - 1;
 
-            console.log('До добавления было символов', buffer.length);
-            console.log(iconv.decode(buffer.slice(0, this.headOffset), this.encoding).replace(/^\x20+|\x20+$/g, ''));
-
             if (residueBuffer) residueBufferSuccess = true;
 
             bufferTemp = null;
@@ -161,16 +162,16 @@
                  _ref1 > 0 ? _i <= endPoint : _i >= endPoint;
                  point = _i += _ref1
             ) {
+
                 if ((buffer.length - point) < this.recordLength) {
                     continue;
                 }
 
+
                 if ((buffer.length - (point + this.recordLength)) < this.recordLength) {
                     residueBuffer = buffer.slice((point + this.recordLength), buffer.length);
-                    console.log('Данные из residueBuffer записанны успешно: ' + residueBuffer.length);
+                    //console.log('Данные из residueBuffer записанны успешно: ' + residueBuffer.length);
                 }
-
-                console.log(iconv.decode(buffer.slice(point, (point + this.recordLength)), this.encoding).replace(/^\x20+|\x20+$/g, ''));
 
                 if (residueBufferSuccess === true) {
                     //console.log('!!!!!!!!!!!!!!!!');
@@ -182,12 +183,9 @@
                     console.log(bufferTemp);
                     bufferTemp = iconv.encode(bufferTemp, this.encoding);
                     //console.log(bufferTemp);
-
                     residueBuffer = false;
                     residueBufferSuccess = false;
                 } else bufferTemp = buffer.slice(point, point + this.recordLength);
-
-                console.log(point, this.recordLength, (buffer.length - point));
 
                 record = [];
                 i = 0;
@@ -205,10 +203,10 @@
                 record["_deletedFlag"] = deletedFlag;
 
                 lim++;
-                if (residueBuffer) {
-                    console.log('residueBuffer: ', iconv.decode(residueBuffer, this.encoding).replace(/^\x20+|\x20+$/g, ''));
-                }
-
+                //if (residueBuffer) {
+                //    console.log('residueBuffer: ', iconv.decode(residueBuffer, this.encoding).replace(/^\x20+|\x20+$/g, ''));
+                //}
+                console.log(lim , this.rowsNumder);
                 if ((lim < this.rowsNumder) && (lim_buf !== lim)) {
                     lim_buf = lim;
                     _results.push(this.emit('record', record));
@@ -217,12 +215,12 @@
                     lim_buf = lim;
                     _results.push(this.emit('record', record));
                     _results.push(this.emit('end'));
+
                 } else {
+                    lim = 0;
                     return;
                 }
-
             }
-
             return _results;
         };
 
