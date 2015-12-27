@@ -11,8 +11,12 @@ var getMySQLObject = require('../controllers/getMySQLObject.js');
 var dbLock = 0;
 var dataBuffer;
 
-/* GET home page. */
 router.get('/', function (req, res, next) {
+    res.render('api', { title: 'KLADR-API' });
+});
+
+
+router.get('/import', function (req, res, next) {
     var record, recordsCount;
     var i = 0;
     var request = [];
