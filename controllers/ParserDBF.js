@@ -61,6 +61,8 @@
                     i_i = 0;
                 }
             })(this));
+            //readableStream.pause();
+            //readableStream.resume();
 
             readableStream
                 .on('open', (function (_this) {
@@ -84,6 +86,10 @@
                             //console.log(buffer);
                             //console.log('Buffer length:' + buffer.length);
                             _this._parseRecords(buffer);
+                            readableStream.pause();
+                            setTimeout(function () {
+                                readableStream.resume();
+                            }, 1);
                         }
                     }
                 })(this))
@@ -180,7 +186,7 @@
                     bufferTemp = iconv.decode(bufferTemp, this.encoding);
                     //console.log(bufferTemp);
                     bufferTemp = residueBuffer + bufferTemp;
-                    console.log(bufferTemp);
+                    //console.log(bufferTemp);
                     bufferTemp = iconv.encode(bufferTemp, this.encoding);
                     //console.log(bufferTemp);
                     residueBuffer = false;
@@ -206,7 +212,7 @@
                 //if (residueBuffer) {
                 //    console.log('residueBuffer: ', iconv.decode(residueBuffer, this.encoding).replace(/^\x20+|\x20+$/g, ''));
                 //}
-                console.log(lim , this.rowsNumder);
+
                 if ((lim < this.rowsNumder) && (lim_buf !== lim)) {
                     lim_buf = lim;
                     _results.push(this.emit('record', record));

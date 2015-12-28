@@ -8,19 +8,24 @@ var merge = require('merge'), original, cloned;
 var mysql = require('mysql');
 var parameters = require('../config/parameters.json');
 var getMySQLObject = require('../controllers/getMySQLObject.js');
+var async = require('async');
+//var numCPUs = require('os').cpus().length;
+var OS = require('os');
+var cluster = require('cluster');
 var dbLock = 0;
 var dataBuffer;
 
 router.get('/', function (req, res, next) {
-    res.render('api', { title: 'KLADR-API' });
+    res.render('api', {title: 'KLADR-API'});
 });
-
 
 router.get('/import', function (req, res, next) {
     var record, recordsCount;
     var i = 0;
     var request = [];
-    var rowsNumder = 10000;
+    var rowsNumder = 1;
+
+    console.log(OS.cpus().length);
 
     if (dbLock !== 0) {
         return res.send({
