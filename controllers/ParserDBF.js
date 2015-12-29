@@ -27,7 +27,7 @@
     iconv = require('iconv-lite');
     JSZip = require("jszip");
     liner = require("liner");
-    sleep = require('sleep');
+    //sleep = require('sleep');
     cluster = require('cluster');
     numCPUs = require('os').cpus().length;
 

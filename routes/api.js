@@ -44,7 +44,7 @@ router.get('/import', function (req, res, next) {
     var record, recordsCount;
     var i = 0;
     var request = [];
-    var rowsNumder = 500000;
+    var rowsNumder = 1;
 
     if (dbLock !== 0) {
         return res.send({
