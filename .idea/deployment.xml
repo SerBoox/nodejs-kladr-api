@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData">
+  <component name="PublishConfigData" autoUpload="Always" serverName="kladr.dev.entirec.ru">
     <serverData>
       <paths name="advisor.stage.entirec.ru">
         <serverdata>
@@ -27,6 +27,13 @@
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="kladr.dev.entirec.ru">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/kladr.entirec.ru" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
@@ -73,5 +80,6 @@
         </serverdata>
       </paths>
     </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>

@@ -24,18 +24,19 @@
     EventEmitter = require('events').EventEmitter;
 
     fs = require('fs');
-
     iconv = require('iconv-lite');
-
     JSZip = require("jszip");
-
     liner = require("liner");
+    sleep = require('sleep');
+    cluster = require('cluster');
+    numCPUs = require('os').cpus().length;
 
     var i_i = 0;
     var lim = 0;
     var lim_buf = 0;
-    var test_buffer = '';
     var residueBuffer;
+    var readableStream;
+    var event = 'start';
 
     DBFParser = (function (_super) {
         __extends(DBFParser, _super);
@@ -51,37 +52,29 @@
         }
 
         DBFParser.prototype.parse = function () {
-            var readableStream = fs.createReadStream(this.fileName);
+            console.log('PARSER START');
 
-            this.on('end', (function (_this) {
-                return function () {
-                    console.log('Emit end enable this.on end');
-                    readableStream.destroy();
-                    readableStream.close();
-                    i_i = 0;
-                }
-            })(this));
-            //readableStream.pause();
-            //readableStream.resume();
-
+            readableStream = fs.createReadStream(this.fileName);
             readableStream
                 .on('open', (function (_this) {
                     return function () {
-                        console.log("Start read stream");
+                        console.log("START READ STREAM");
                         _this.emit('start');
+                        event = 'start';
                     }
                 })(this))
                 .on('data', (function (_this) {
                     return function (buffer) {
                         i_i++;
-                        if (i_i === 1) {
+                        //console.log(i_i);
+                        if ((i_i === 1) && (event == 'start')) {
                             //console.log('Read .on data id: ' + i_i);
                             //console.log(buffer);
                             //console.log('Buffer length:' + buffer.length);
                             _this._parseHead(buffer);
                             _this._parseRecords(buffer);
                         }
-                        else {
+                        else if(event == 'start') {
                             //console.log('Read .on data id: ' + i_i);
                             //console.log(buffer);
                             //console.log('Buffer length:' + buffer.length);
@@ -89,7 +82,9 @@
                             readableStream.pause();
                             setTimeout(function () {
                                 readableStream.resume();
-                            }, 1);
+                            }, 210);
+                        }else{
+                            i_i = 0;
                         }
                     }
                 })(this))
@@ -115,6 +110,15 @@
                         i_i = 0;
                     }
                 })(this));
+
+            this.on('end', (function (_this) {
+                return function () {
+                    console.log('Emit end enable this.on end');
+                    readableStream.destroy();
+                    readableStream.close();
+                    i_i = 0;
+                }
+            })(this));
         };
 
         DBFParser.prototype.parseZip = function () {
@@ -173,7 +177,6 @@
                     continue;
                 }
 
-
                 if ((buffer.length - (point + this.recordLength)) < this.recordLength) {
                     residueBuffer = buffer.slice((point + this.recordLength), buffer.length);
                     //console.log('Данные из residueBuffer записанны успешно: ' + residueBuffer.length);
@@ -209,21 +212,39 @@
                 record["_deletedFlag"] = deletedFlag;
 
                 lim++;
+
                 //if (residueBuffer) {
                 //    console.log('residueBuffer: ', iconv.decode(residueBuffer, this.encoding).replace(/^\x20+|\x20+$/g, ''));
                 //}
 
+                //console.log(event);
+                //console.log('lim: ' + lim);
+                //console.log('lim_buf: ' + lim_buf);
                 if ((lim < this.rowsNumder) && (lim_buf !== lim)) {
-                    lim_buf = lim;
-                    _results.push(this.emit('record', record));
+                    //console.log(lim + '<' + this.rowsNumder);
+                    if (event === 'start') {
+                        lim_buf = lim;
+                        _results.push(this.emit('record', record));
+                    } else {
+                        console.log('Цикл попытался произвести избыточные операции!');
+                        i_i = 0;
+                        lim = 0;
+                        lim_buf = 0;
+                        return;
+                    }
                 }
                 else if ((lim === this.rowsNumder) && (lim_buf !== lim)) {
+                    //console.log(lim + '===' + this.rowsNumder);
                     lim_buf = lim;
                     _results.push(this.emit('record', record));
                     _results.push(this.emit('end'));
-
+                    i_i = 0;
+                    event = 'end';
                 } else {
+                    console.log('ELSE!!!', lim, lim_buf);
                     lim = 0;
+                    lim_buf = 0;
+                    i_i = 0;
                     return;
                 }
             }
