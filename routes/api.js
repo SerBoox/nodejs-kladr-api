@@ -9,9 +9,10 @@ var mysql = require('mysql');
 var parameters = require('../config/parameters.json');
 var getMySQLObject = require('../controllers/getMySQLObject.js');
 var async = require('async');
-//var numCPUs = require('os').cpus().length;
-var OS = require('os');
+
+var dbfParser;
 var cluster = require('cluster');
+var numCPUs = require('os').cpus().length;
 var dbLock = 0;
 var dataBuffer;
 
@@ -19,13 +20,31 @@ router.get('/', function (req, res, next) {
     res.render('api', {title: 'KLADR-API'});
 });
 
+router.get('/cluster', function (req, res, next) {
+    console.log(cluster);
+    if (cluster.isMaster) {
+        // Fork workers.
+        for (var i = 0; i < numCPUs; i++) {
+            cluster.fork();
+        }
+
+        cluster.on('exit', function (worker, code, signal) {
+            console.log('worker ' + worker.process.pid + ' died');
+        });
+    } else {
+        // Workers can share any TCP connection
+        // In this case it is an HTTP server
+        console.log('worker else!');
+
+    }
+    res.send('Готово');
+});
+
 router.get('/import', function (req, res, next) {
     var record, recordsCount;
     var i = 0;
     var request = [];
     var rowsNumder = 1;
-
-    console.log(OS.cpus().length);
 
     if (dbLock !== 0) {
         return res.send({
@@ -50,7 +69,7 @@ router.get('/import', function (req, res, next) {
         else
             recordsCount = rowsNumder;
 
-        console.log('Start Read File: ' + tableDBF.file + '.Row: ' + recordsCount);
+        console.log(tableDBF.file + ': ' + 'START READ row: ' + recordsCount);
 
         //Указываем максимальное число эмиттеров
         if (recordsCount < 70)
@@ -69,7 +88,7 @@ router.get('/import', function (req, res, next) {
             else
                 data[0] = {id: i};
 
-            console.log("record id: " + i);
+            console.log(tableDBF.file + ': ' + "fs success read id: " + i);
 
             data.forEach(function (currentValue, index) {
                 if (currentValue.value == null)
@@ -91,13 +110,12 @@ router.get('/import', function (req, res, next) {
         }
     });
 
-
     dbfParser.on('end', function () {
         if (recordsCount == 0) res.send('File: ' + tableDBF.file + ' is empty.'); //Show Data
-        return console.log('Finish read file: ' + tableDBF.file);
+        console.log('Finish read file: ' + tableDBF.file);
     });
 
-    dbfParser.parse();
+    if (dbLock === 0) dbfParser.parse();
 });
 
 var j = 0;
@@ -109,6 +127,7 @@ eventEmitter.on('record_mysql_table', function (mysql_table, data, recordsCount)
     j++;
     dbLock++;
     if (j == 1) {
+        startDbRecordTime = new Date().getTime();
         //Parameters MySQL connection
         var tableMySQL = parameters.DataBase.kladr_dbf;
         connection = mysql.createConnection({
@@ -121,32 +140,38 @@ eventEmitter.on('record_mysql_table', function (mysql_table, data, recordsCount)
         });
         //MySQL Connection
         connection.connect(function () {
-            console.log('Start MySQL connection');
+            console.log('START MySQL CONNECTION');
         });
-    }
-
-    if (j == 1) {
+        //Clear table
         eventEmitter.emit('reset_mysql_table', connection, mysql_table);
-        startDbRecordTime = new Date().getTime();
-        recordInMySQLTable(mysql_table, data);
-    } else
-        recordInMySQLTable(mysql_table, data);
-
-    if (j == recordsCount) {
-        connection.end(function () {
-            finishDbRecordTime = new Date().getTime();
-            console.log('Finish MySQL connection.Record time: ' + (finishDbRecordTime - startDbRecordTime));
-        });
-        j = 0;
-        dbLock = 0;
     }
+
+    process.nextTick(function () {
+        recordInMySQLTable(mysql_table, data, recordsCount);
+    });
+
+
 });
-function recordInMySQLTable(mysql_table, data) {
+
+function recordInMySQLTable(mysql_table, data, recordsCount) {
     connection.query('INSERT INTO ?? SET ?', [mysql_table, data],
         function (error) {
             if (error !== null) {
-                console.log("MySQL id: " + j);
-                console.log("MySQL Error: " + error);
+                console.log(mysql_table + ': ' + 'mysql success record id:' + data.id);
+                console.log(mysql_table + ': ' + "text error: " + error);
+            } else {
+                console.log(mysql_table + ': ' + 'mysql success record id:' + data.id);
+                //if (recordsCount == data.id) process.exit();  //Завершить работу сервера по окончанию работы
+            }
+            if (recordsCount == data.id) {
+
+                connection.end(function () {
+                    finishDbRecordTime = new Date().getTime();
+                    console.log(mysql_table + ': ' + 'Finish MySQL connection.Record time: ' + (finishDbRecordTime - startDbRecordTime));
+                });
+
+                j = 0;
+                dbLock = 0;
             }
         }
     );
