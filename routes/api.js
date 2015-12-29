@@ -9,43 +9,32 @@ var mysql = require('mysql');
 var parameters = require('../config/parameters.json');
 var getMySQLObject = require('../controllers/getMySQLObject.js');
 var async = require('async');
+var Promise = require('promise');
 
 var dbfParser;
 var cluster = require('cluster');
 var numCPUs = require('os').cpus().length;
 var dbLock = 0;
-var dataBuffer;
+var dataBuffer, recordsCount, record;
+var rowsNumder = 0;
 
 router.get('/', function (req, res, next) {
     res.render('api', {title: 'KLADR-API'});
 });
 
 router.get('/cluster', function (req, res, next) {
-    console.log(cluster);
-    if (cluster.isMaster) {
-        // Fork workers.
-        for (var i = 0; i < numCPUs; i++) {
-            cluster.fork();
-        }
-
-        cluster.on('exit', function (worker, code, signal) {
-            console.log('worker ' + worker.process.pid + ' died');
-        });
+    console.log(typeof(req.query.rowsnumber));
+    if (!isNaN(parseInt(req.query.rowsnumber, 10)) && (parseInt(req.query.rowsnumber, 10) !== 0)) {
+        //Число больше 0
+        res.send("Это число: " + parseInt(req.query.rowsnumber));
     } else {
-        // Workers can share any TCP connection
-        // In this case it is an HTTP server
-        console.log('worker else!');
-
+        //Не число или число равное 0
+        res.send("Это не число: " + parseInt(req.query.rowsnumber));
     }
-    res.send('Готово');
+
 });
 
 router.get('/import', function (req, res, next) {
-    var record, recordsCount;
-    var i = 0;
-    var request = [];
-    var rowsNumder = 1;
-
     if (dbLock !== 0) {
         return res.send({
             read: i,
@@ -53,22 +42,60 @@ router.get('/import', function (req, res, next) {
         });
     }
 
+    if (!isNaN(parseInt(req.query.rows, 10)) && (parseInt(req.query.rows, 10) !== 0)) {
+        //Число больше 0
+        rowsNumder = parseInt(req.query.rows);
+    } else {
+        //Не число или число равное 0
+        rowsNumder = 0;
+    }
+
     //var tableDBF = parameters.DBF.ALTNAMES;
-    var tableDBF = parameters.DBF.DOMA;
+    //var tableDBF = parameters.DBF.DOMA;
     //var tableDBF = parameters.DBF.FLAT;
     //var tableDBF = parameters.DBF.KLADR;
     //var tableDBF = parameters.DBF.SOCRBASE;
     //var tableDBF = parameters.DBF.STREET;
 
+    parseDBFDocument(parameters.DBF.ALTNAMES, rowsNumder, function (data) {
+        console.log('!!!Этап импорта таблицы `ALTNAMES` прошел успешно -> `DOMA`!!!');
+        parseDBFDocument(parameters.DBF.DOMA, rowsNumder, function (data) {
+            console.log('!!!Этап импорта таблицы `DOMA` прошел успешно-> `FLAT`!!!');
+            parseDBFDocument(parameters.DBF.FLAT, rowsNumder, function (data) {
+                console.log('!!!Этап импорта таблицы `FLAT` прошел успешно-> `KLADR`!!!');
+                parseDBFDocument(parameters.DBF.KLADR, rowsNumder, function (data) {
+                    console.log('!!!Этап импорта таблицы `KLADR` прошел успешно-> `SOCRBASE`!!!');
+                    parseDBFDocument(parameters.DBF.SOCRBASE, rowsNumder, function (data) {
+                        console.log('!!!Этап импорта таблицы `SOCRBASE` прошел успешно-> `STREET`!!!');
+                        parseDBFDocument(parameters.DBF.STREET, rowsNumder, function (data) {
+                            console.log('!!!Этап импорта таблицы `STREET` прошел успешно. THE END!!!');
+                            res.send(data);
+                        });
+                    });
+                });
+            });
+        });
+    });
+
+    eventEmitter.emit('parse_documents');
+
+});
+//var i = 0;
+function parseDBFDocument(tableDBF, rowsNumder, callback) {
     dbfParser = new ParserDBF(tableDBF.path + tableDBF.file, tableDBF.charset, rowsNumder);
 
     dbfParser.on('head', function (head) {
         //return console.log(head);
         if (rowsNumder === 0)
             recordsCount = head.recordsCount;
+        else if (head.recordsCount < rowsNumder)
+            recordsCount = head.recordsCount;
         else
             recordsCount = rowsNumder;
-
+        if (head.recordsCount == 0) {
+            dbfParser.emit('end');
+            return callback();
+        }
         console.log(tableDBF.file + ': ' + 'START READ row: ' + recordsCount);
 
         //Указываем максимальное число эмиттеров
@@ -76,9 +103,14 @@ router.get('/import', function (req, res, next) {
             eventEmitter.setMaxListeners(70);
         else
             eventEmitter.setMaxListeners(recordsCount);
+
+
     });
 
+    var i = 0;
     dbfParser.on('record', function (data) {
+        if (recordsCount <= 0) return callback();
+
         i++;
         if (Array.isArray(data) && (
                 (rowsNumder === 0) || (rowsNumder >= i)
@@ -98,32 +130,31 @@ router.get('/import', function (req, res, next) {
             var object = getMySQLObject(tableDBF.mysql_table, data);
 
             //Enable Record Emitter
-            eventEmitter.emit('record_mysql_table', tableDBF.mysql_table, object, recordsCount);
+            eventEmitter.emit('record_mysql_table', tableDBF.mysql_table, object, recordsCount, callback);
         } else
             return;
 
         //Show result
         if (i === recordsCount) {
             dataBuffer = data;
-            res.send(data); //Show data
             i = 0;
+            return data;
         }
     });
 
     dbfParser.on('end', function () {
-        if (recordsCount == 0) res.send('File: ' + tableDBF.file + ' is empty.'); //Show Data
         console.log('Finish read file: ' + tableDBF.file);
     });
 
     if (dbLock === 0) dbfParser.parse();
-});
+}
 
 var j = 0;
 var startDbRecordTime; //milliseconds
 var finishDbRecordTime; //milliseconds
 var connection;
 
-eventEmitter.on('record_mysql_table', function (mysql_table, data, recordsCount) {
+eventEmitter.on('record_mysql_table', function (mysql_table, data, recordsCount, callback) {
     j++;
     dbLock++;
     if (j == 1) {
@@ -144,16 +175,20 @@ eventEmitter.on('record_mysql_table', function (mysql_table, data, recordsCount)
         });
         //Clear table
         eventEmitter.emit('reset_mysql_table', connection, mysql_table);
+        if (mysql_table == parameters.DBF.ALTNAMES.mysql_table)
+            eventEmitter.emit('reset_mysql_table', connection, 'aa_record_time_log');
+        //Record in time log
+        eventEmitter.emit('record_time_log_table', connection, 'start', mysql_table);
     }
 
     process.nextTick(function () {
-        recordInMySQLTable(mysql_table, data, recordsCount);
+        recordInMySQLTable(mysql_table, data, recordsCount, callback);
     });
 
 
 });
 
-function recordInMySQLTable(mysql_table, data, recordsCount) {
+function recordInMySQLTable(mysql_table, data, recordsCount, callback) {
     connection.query('INSERT INTO ?? SET ?', [mysql_table, data],
         function (error) {
             if (error !== null) {
@@ -164,18 +199,30 @@ function recordInMySQLTable(mysql_table, data, recordsCount) {
                 //if (recordsCount == data.id) process.exit();  //Завершить работу сервера по окончанию работы
             }
             if (recordsCount == data.id) {
-
-                connection.end(function () {
+                //Record in time log
+                eventEmitter.emit('record_time_log_table', connection, 'finish', mysql_table);
+                //Destroy connection
+                setTimeout(connection.end(function () {
                     finishDbRecordTime = new Date().getTime();
                     console.log(mysql_table + ': ' + 'Finish MySQL connection.Record time: ' + (finishDbRecordTime - startDbRecordTime));
-                });
-
+                    callback(data);
+                }),10);
                 j = 0;
                 dbLock = 0;
             }
         }
     );
 }
+
+eventEmitter.on('record_time_log_table', function (connection, event, mysql_table) {
+    connection.query("INSERT INTO `aa_record_time_log` (`id`,`event`,`table_name` ,`start_time`) VALUES ( NULL , ? ,? , NOW( ))", [event, mysql_table],
+        function (error) {
+            if (error !== null) {
+                console.log("MySQL `record_time_log` Table Error: " + error);
+            }
+        }
+    );
+});
 
 eventEmitter.on('reset_mysql_table', function (connection, mysql_table) {
     //Clear Table "TRUNCATE TABLE  `socrbase`"

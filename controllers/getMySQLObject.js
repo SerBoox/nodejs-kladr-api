@@ -57,12 +57,13 @@ function getMySQLObject(mysql_table, data) {
         case('street'):
             return object = {
                 id: data[0].id,
-                altnames: data[1].value,
-                doma: data[2].value,
-                flat: data[3].value,
-                kladr: data[4].value,
-                socrbase: data[5].value,
-                street: data[6].value
+                name: data[1].value,
+                socr: data[2].value,
+                code: data[3].value,
+                index: data[4].value,
+                gninmb: data[5].value,
+                uno: data[6].value,
+                ocatd: data[7].value
             };
             break;
     }

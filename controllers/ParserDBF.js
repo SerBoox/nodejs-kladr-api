@@ -58,7 +58,7 @@
             readableStream
                 .on('open', (function (_this) {
                     return function () {
-                        console.log("START READ STREAM");
+                        console.log("START READ STREAM","EVENT: " + event);
                         _this.emit('start');
                         event = 'start';
                     }
@@ -82,7 +82,7 @@
                             readableStream.pause();
                             setTimeout(function () {
                                 readableStream.resume();
-                            }, 210);
+                            }, 250);
                         }else{
                             i_i = 0;
                         }
@@ -92,15 +92,6 @@
                     i_i = 0;
                     throw error;
                 })
-                .on('close', (function (_this) {
-                    return function () {
-                        console.log('Close readable connection .on close');
-                        _this.emit('end');
-                        readableStream.destroy();
-                        readableStream.close();
-                        i_i = 0;
-                    }
-                })(this))
                 .on('end', (function (_this) {
                     return function () {
                         console.log("Finish record stream .on end");
@@ -116,6 +107,9 @@
                     console.log('Emit end enable this.on end');
                     readableStream.destroy();
                     readableStream.close();
+                    lim = 0;
+                    lim_buf = 0;
+                    event = 'end';
                     i_i = 0;
                 }
             })(this));
@@ -245,6 +239,7 @@
                     lim = 0;
                     lim_buf = 0;
                     i_i = 0;
+                    event = 'end';
                     return;
                 }
             }
