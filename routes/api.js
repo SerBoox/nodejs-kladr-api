@@ -178,7 +178,7 @@ eventEmitter.on('record_mysql_table', function (mysql_table, data, recordsCount,
         if (mysql_table == parameters.DBF.ALTNAMES.mysql_table)
             eventEmitter.emit('reset_mysql_table', connection, 'aa_record_time_log');
         //Record in time log
-        eventEmitter.emit('record_time_log_table', connection, 'start', mysql_table);
+        eventEmitter.emit('record_time_log_table', connection, 'start', mysql_table, recordsCount);
     }
 
     process.nextTick(function () {
@@ -200,13 +200,13 @@ function recordInMySQLTable(mysql_table, data, recordsCount, callback) {
             }
             if (recordsCount == data.id) {
                 //Record in time log
-                eventEmitter.emit('record_time_log_table', connection, 'finish', mysql_table);
+                eventEmitter.emit('record_time_log_table', connection, 'finish', mysql_table, data.id);
                 //Destroy connection
                 setTimeout(connection.end(function () {
                     finishDbRecordTime = new Date().getTime();
                     console.log(mysql_table + ': ' + 'Finish MySQL connection.Record time: ' + (finishDbRecordTime - startDbRecordTime));
                     callback(data);
-                }),10);
+                }), 10);
                 j = 0;
                 dbLock = 0;
             }
@@ -214,8 +214,8 @@ function recordInMySQLTable(mysql_table, data, recordsCount, callback) {
     );
 }
 
-eventEmitter.on('record_time_log_table', function (connection, event, mysql_table) {
-    connection.query("INSERT INTO `aa_record_time_log` (`id`,`event`,`table_name` ,`start_time`) VALUES ( NULL , ? ,? , NOW( ))", [event, mysql_table],
+eventEmitter.on('record_time_log_table', function (connection, event, mysql_table, recordsCount) {
+    connection.query("INSERT INTO `aa_record_time_log` (`id`,`event`,`table_name`,`rows`,`start_time`) VALUES ( NULL , ? , ? , ? , NOW( ))", [event, mysql_table, recordsCount],
         function (error) {
             if (error !== null) {
                 console.log("MySQL `record_time_log` Table Error: " + error);

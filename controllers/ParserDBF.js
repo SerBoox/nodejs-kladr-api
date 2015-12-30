@@ -214,7 +214,7 @@
                 //console.log(event);
                 //console.log('lim: ' + lim);
                 //console.log('lim_buf: ' + lim_buf);
-                if ((lim < this.rowsNumder) && (lim_buf !== lim)) {
+                if (((lim < this.rowsNumder) || (this.rowsNumder === 0)) && (lim_buf !== lim)) {
                     //console.log(lim + '<' + this.rowsNumder);
                     if (event === 'start') {
                         lim_buf = lim;
@@ -227,7 +227,7 @@
                         return;
                     }
                 }
-                else if ((lim === this.rowsNumder) && (lim_buf !== lim)) {
+                else if (((lim === this.rowsNumder) || (this.rowsNumder === 0)) && (lim_buf !== lim)) {
                     //console.log(lim + '===' + this.rowsNumder);
                     lim_buf = lim;
                     _results.push(this.emit('record', record));
