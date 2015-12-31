@@ -32,7 +32,6 @@
     numCPUs = require('os').cpus().length;
 
     var i_i = 0;
-    var lim = 0;
     var lim_buf = 0;
     var residueBuffer;
     var readableStream;
@@ -41,8 +40,10 @@
     DBFParser = (function (_super) {
         __extends(DBFParser, _super);
 
-        function DBFParser(fileName, encoding, rowsNumder) {
+        function DBFParser(fileName, encoding, rowsNumder, dbAmount) {
             this.fileName = fileName;
+            this.amount = 0;
+            this.dbAmount = (dbAmount === undefined) ? 0 : dbAmount;
             this.rowsNumder = rowsNumder;
             this.encoding = encoding != null ? encoding : 'GBK';
             this._parseField = __bind(this._parseField, this);
@@ -58,9 +59,10 @@
             readableStream
                 .on('open', (function (_this) {
                     return function () {
-                        console.log("START READ STREAM","EVENT: " + event);
+                        console.log("START READ STREAM", "EVENT: " + event);
                         _this.emit('start');
                         event = 'start';
+                        this.amount = 0;
                     }
                 })(this))
                 .on('data', (function (_this) {
@@ -74,16 +76,37 @@
                             _this._parseHead(buffer);
                             _this._parseRecords(buffer);
                         }
-                        else if(event == 'start') {
-                            //console.log('Read .on data id: ' + i_i);
-                            //console.log(buffer);
-                            //console.log('Buffer length:' + buffer.length);
+                        else if (event == 'start') {
                             _this._parseRecords(buffer);
                             readableStream.pause();
-                            setTimeout(function () {
-                                readableStream.resume();
-                            }, 250);
-                        }else{
+                            if (!isNaN(parseInt(_this.dbAmount, 10)) && !isNaN(parseInt(_this.amount, 10))) {
+                                var interval = setInterval(function () {
+                                    if ((_this.dbAmount === 0) || (_this.dbAmount === undefined)) {
+                                        //Число больше т.к. значения отсутствуют
+                                        console.log("Читаем дальше т.к. значения отсутствуют...", _this.amount, _this.dbAmount);
+                                        readableStream.resume();
+                                        clearInterval(interval);
+                                    } else if (_this.dbAmount >= _this.amount) {
+                                        //Читаем дальше...
+                                        console.log("Читаем дальше...", _this.amount, _this.dbAmount);
+                                        readableStream.resume();
+                                        clearInterval(interval);
+                                    } else if (_this.dbAmount >= (_this.amount - 622)) {
+                                        //Пусть будет небольшая забивка буфера числом на 622 записи
+                                        console.log("Читаем дальше... c забивкой буфера", _this.amount, _this.dbAmount);
+                                        readableStream.resume();
+                                        clearInterval(interval);
+                                    } else {
+                                        //Ждем
+                                        console.log("Ждем...", _this.amount, _this.dbAmount);
+                                    }
+                                }, 100);
+                            } else {
+                                setTimeout(function () {
+                                    readableStream.resume();
+                                }, 25000);
+                            }
+                        } else {
                             i_i = 0;
                         }
                     }
@@ -107,7 +130,7 @@
                     console.log('Emit end enable this.on end');
                     readableStream.destroy();
                     readableStream.close();
-                    lim = 0;
+                    _this.amount = 0;
                     lim_buf = 0;
                     event = 'end';
                     i_i = 0;
@@ -150,7 +173,7 @@
         };
 
         DBFParser.prototype._parseRecords = function (buffer) {
-            var residueBufferSuccess, head_coif, bufferTemp, curPoint, deletedFlag, endPoint, field, i, point, record, _i, _j, _len, _ref, _ref1, _ref2, _results;
+            var residueBufferSuccess, bufferTemp, curPoint, endPoint, field, i, point, record, _i, _ref, _ref1, _results;
             endPoint = this.headOffset + this.recordLength * this.recordsCount - 1;
 
             if (residueBuffer) residueBufferSuccess = true;
@@ -158,7 +181,7 @@
             bufferTemp = null;
             _results = [];
 
-            if (i_i === 1) head_coif = this.headOffset;
+            if ((i_i === 1) && (this.amount === 0)) head_coif = this.headOffset;
             else if (residueBuffer) head_coif = 0 - residueBuffer.length;
             else head_coif = 0;
 
@@ -176,8 +199,13 @@
                     //console.log('Данные из residueBuffer записанны успешно: ' + residueBuffer.length);
                 }
 
+                if ((residueBufferSuccess === true) && (this.amount === 0)){
+                    console.log('Произошел сброс переменной residueBufferSuccess');
+                    residueBufferSuccess = false;
+                }
+
                 if (residueBufferSuccess === true) {
-                    //console.log('!!!!!!!!!!!!!!!!');
+                    //console.log('Произошло склеивание строк');
                     residueBuffer = iconv.decode(residueBuffer, this.encoding);
                     bufferTemp = buffer.slice(0, (this.recordLength - residueBuffer.length));
                     bufferTemp = iconv.decode(bufferTemp, this.encoding);
@@ -188,55 +216,47 @@
                     //console.log(bufferTemp);
                     residueBuffer = false;
                     residueBufferSuccess = false;
-                } else bufferTemp = buffer.slice(point, point + this.recordLength);
+                } else
+                    bufferTemp = buffer.slice(point, point + this.recordLength);
 
                 record = [];
                 i = 0;
                 curPoint = 1;
-                deletedFlag = bufferTemp[0] === 42 || bufferTemp[0] === '*';
-                _ref2 = this.fields;
-                for (_j = 0, _len = _ref2.length; _j < _len; _j++) {
-                    field = _ref2[_j];
-                    if (field.name === '') {
-                        curPoint += field.length;
-                    } else {
-                        record[i++] = this._parseField(curPoint, curPoint += field.length, field, bufferTemp);
-                    }
-                }
-                record["_deletedFlag"] = deletedFlag;
+                this.amount++;
 
-                lim++;
+                for (var _j = 0; _j < this.fields.length; _j++) {
+                    field = this.fields[_j];
+                    if (field.name === '')
+                        curPoint += field.length;
+                    else
+                        record[i++] = this._parseField(curPoint, curPoint += this.fields[_j].length, field,bufferTemp);
+                }
 
                 //if (residueBuffer) {
                 //    console.log('residueBuffer: ', iconv.decode(residueBuffer, this.encoding).replace(/^\x20+|\x20+$/g, ''));
                 //}
 
-                //console.log(event);
-                //console.log('lim: ' + lim);
-                //console.log('lim_buf: ' + lim_buf);
-                if (((lim < this.rowsNumder) || (this.rowsNumder === 0)) && (lim_buf !== lim)) {
-                    //console.log(lim + '<' + this.rowsNumder);
+                if (((this.amount < this.rowsNumder) || (this.rowsNumder === 0)) && (lim_buf !== this.amount)) {
                     if (event === 'start') {
-                        lim_buf = lim;
+                        lim_buf = this.amount;
                         _results.push(this.emit('record', record));
                     } else {
                         console.log('Цикл попытался произвести избыточные операции!');
                         i_i = 0;
-                        lim = 0;
+                        this.amount = 0;
                         lim_buf = 0;
                         return;
                     }
                 }
-                else if (((lim === this.rowsNumder) || (this.rowsNumder === 0)) && (lim_buf !== lim)) {
-                    //console.log(lim + '===' + this.rowsNumder);
-                    lim_buf = lim;
+                else if (((this.amount === this.rowsNumder) || (this.rowsNumder === 0)) && (lim_buf !== this.amount)) {
+                    lim_buf = this.amount;
                     _results.push(this.emit('record', record));
                     _results.push(this.emit('end'));
                     i_i = 0;
                     event = 'end';
                 } else {
-                    console.log('ELSE!!!', lim, lim_buf);
-                    lim = 0;
+                    console.log('ELSE!!!', this.amount, lim_buf);
+                    this.amount = 0;
                     lim_buf = 0;
                     i_i = 0;
                     event = 'end';

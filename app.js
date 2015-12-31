@@ -6,6 +6,8 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 
 var api = require('./routes/api');
+var import_in_mysql = require('./routes/import_in_mysql');
+var distribution_in_mysql = require('./routes/distribution_in_mysql');
 var routes = require('./routes/index');
 var test = require('./routes/test');
 var users = require('./routes/users');
@@ -26,6 +28,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', routes);
 app.use('/api', api);
+app.use('/import_in_mysql', import_in_mysql);
+app.use('/distribution_in_mysql', distribution_in_mysql);
 app.use('/test', test);
 app.use('/users', users);
 
