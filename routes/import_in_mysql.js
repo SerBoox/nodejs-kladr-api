@@ -234,7 +234,7 @@ function recordInMySQLTable(mysql_table, data, recordsCount, dbfParser, callback
 }
 
 eventEmitter.on('record_time_log_table', function (connection, event, mysql_table, recordsCount) {
-    connection.query("INSERT INTO `aa_record_time_log` (`id`,`event`,`table_name`,`rows`,`start_time`) VALUES ( NULL , ? , ? , ? , NOW( ))", [event, mysql_table, recordsCount],
+    connection.query("INSERT INTO `aa_record_time_log` (`id`,`event`,`table_name`,`rows`,`date_time`) VALUES ( NULL , ? , ? , ? , NOW( ))", [event, mysql_table, recordsCount],
         function (error) {
             if (error !== null) {
                 console.log("MySQL `record_time_log` Table Error: " + error);

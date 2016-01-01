@@ -9,8 +9,14 @@ var getMySQLObject = require('../controllers/getMySQLObject.js');
 var async = require('async');
 var Promise = require('promise');
 
-
 router.get('/test', function (req, res, next) {
+
+    var startDbRecordTime = new Date().getTime();
+
+    res.send('Иди смотри)');
+});
+
+router.get('/distribution', function (req, res, next) {
     var startDbRecordTime = new Date().getTime();
     var Distribution, connection,
         __bind = function (fn, me) {
@@ -44,6 +50,8 @@ router.get('/test', function (req, res, next) {
             this.DBF_MySQL_DB = parameters.DataBase.kladr_dbf.name;
             this.DBF_MySQL_Tables = [];
             this.databases = [];
+            this.name_dbf_log_table = 'aa_record_time_log';
+            this.name_log_table = 'aa_record_time_log';
             this.stage = 0;
         }
 
@@ -106,22 +114,24 @@ router.get('/test', function (req, res, next) {
                 if (this.databases[i].Database == name_database) {
                     if (name_database == this.DBF_MySQL_DB) {
                         console.log('База с информацией для импорта найденна: ', this.DBF_MySQL_DB);
-                        this.show_tables(this.DBF_MySQL_DB, '');
-
+                        this.show_tables(this.DBF_MySQL_DB, 'log');
+                        return;
                     } else if (name_database == this.bufferMySQL_DB) {
                         console.log('База в которую будет произведен импорт найденна: ', name_database);
                         this.find_database(this.DBF_MySQL_DB);
+                        return;
                     }
-                    return;
                 } else if ((i === dbListLength - 1) && (this.databases[i].Database != name_database)) {
                     console.log('База данных не найденна :', name_database);
-                    if (name_database == this.bufferMySQL_DB)
+                    if (name_database == this.bufferMySQL_DB){
                         this.create_database(name_database);
-                    if (name_database == this.DBF_MySQL_DB) {
+                        return;
+                    }if (name_database == this.DBF_MySQL_DB) {
                         console.log('База данных хранящая основную импортируевую информацию отсутствует в MySQL!');
                         this.close_connection();
+                        return;
                     }
-                    return;
+
                 }
             }
         };
@@ -194,29 +204,33 @@ router.get('/test', function (req, res, next) {
             eventEmitter.on('save_show_tables', (function (_this) {
                 return function () {
                     if ((database === _this.DBF_MySQL_DB) && (i === 0)) {
-                        console.log('В базе: ' + database + ' найденно таблиц: ' + dataLength);
-                        if(dataLength === 7) console.log('Число '+ dataLength +' соответствует необходимому значению числа таблиц!');
+                        _this.DBF_MySQL_Tables = (data.length > 0) ? data : [];
+                        console.log('В базе: ' + database + ' найденно таблиц: ' + dataLength,'event', event);
+                        if (dataLength === 7) console.log('Число ' + dataLength + ' соответствует необходимому значению числа таблиц!');
                         else console.log('Внимание! ' + dataLength + ' таблиц может быть недостаточно для полного распределения данных!');
-                        if (event !== 'show') {
+                        if (event === 'log') {
                             if (i === 0) {
                                 i++;
-                                _this.show_tables(_this.bufferMySQL_DB, '');
+                                _this.find_tables(_this.DBF_MySQL_DB, _this.name_dbf_log_table);
                             }
                         }
-                        _this.DBF_MySQL_Tables = (data.length > 0) ? data : [];
+
                     } else if ((database === _this.bufferMySQL_DB) && (i === 0)) {
-                        console.log('В базе: ' + database + ' найденно таблиц: ' + dataLength);
-                        if (event !== 'show') {
-                            _this.find_tables(_this.bufferMySQL_DB,'aa_record_time_log');
-                        }
                         _this.bufferMySQL_Tables = (data.length > 0) ? data : [];
+                        console.log('В базе: ' + database + ' найденно таблиц: ' + dataLength,'event', event);
+                        if (event === 'log') {
+                            if (i === 0) {
+                                i++;
+                                _this.find_tables(_this.bufferMySQL_DB, _this.name_log_table);
+                            }
+                        }
                     }
                 }
             })(this));
         };
 
         Distribution.prototype.find_tables = function (name_database, name_table) {
-            var data,dbListLength, keyObject, key, i;
+            var data, dbListLength, keyObject, key, i;
             if (name_database === undefined) return false;
             if (name_database == this.DBF_MySQL_DB) {
                 data = this.DBF_MySQL_Tables;
@@ -225,48 +239,75 @@ router.get('/test', function (req, res, next) {
             }
             dbListLength = data.length;
             //console.log(dbListLength,data.length, data); //Число объектов в массиве
-            if (data.length === 0){
+            if ((data.length === 0) && (name_database == this.bufferMySQL_DB)) {
                 console.log('Приступаю к этапу создания табылицы логов в базе: ' + name_database);
-                //Создать таблицу aa_record_time_log
-
-                this.close_connection();
+                this.create_log_table();
+                this.stage = 0;
                 return false;
             }
-            for (keyObject in data[0]){
+            //Получение ключа объекта
+            for (keyObject in data[0]) {
                 key = keyObject;
-                //console.log(key);
-                //console.log(data[0][key]);
+                //console.log(key,data[0]);
             }
 
             for (i = 0; i < dbListLength; i++) {
-                console.log(i, name_table, data[i][key], (name_table == data[i][key]));
+                console.log(i, name_table, '==', data[i][key], (name_table == data[i][key]));
                 if (data[i][key] == name_table) {
-
-                    if (name_database == this.DBF_MySQL_DB) {
-                        console.log('База с информацией для импорта найденна: ', this.DBF_MySQL_DB);
-
-                    } else if (name_database == this.bufferMySQL_DB) {
-                        console.log('База в которую будет произведен импорт найденна: ', name_database);
-                       // this.find_database(this.DBF_MySQL_DB);
+                    if ((this.DBF_MySQL_DB == name_database) && (name_table == this.name_dbf_log_table)) {
+                        console.log('Таблица DBF логов найденна:', name_database, name_table);
+                        this.show_tables(this.bufferMySQL_DB, 'log');
+                        return;
+                    } else if ((this.bufferMySQL_DB == name_database) && (name_table == this.name_log_table)) {
+                        this.stage_controller();
+                        return;
                     }
-                    this.close_connection();
-                    return;
                 } else if ((i === dbListLength - 1) && (data[i][key] != name_table)) {
-                    console.log('База данных не найденна :', v);
-                    if (name_database == this.bufferMySQL_DB)
-
-                        //this.create_database(name_database);
-
-                    if (name_database == this.DBF_MySQL_DB) {
-                        console.log('База данных хранящая основную импортируевую информацию отсутствует в MySQL!');
-                        //this.close_connection();
+                    if ((this.DBF_MySQL_DB == name_database) && (name_table == this.name_dbf_log_table)) {
+                        console.log('Внимание! Таблица DBF логов не найденна:', name_database, name_table);
+                        this.show_tables(this.bufferMySQL_DB, 'log');
+                        return;
+                    } else if ((this.bufferMySQL_DB == name_database) && (name_table == this.name_log_table)) {
+                        this.stage_controller();
+                        return;
                     }
-                    this.close_connection();
-                    return;
                 }
             }
         };
 
+        Distribution.prototype.create_log_table = function () {
+            //USE DATABASE
+            connection.query("CREATE TABLE IF NOT EXISTS ??.?? ( " +
+                "`id` int(11) NOT NULL AUTO_INCREMENT," +
+                "`event_id` int(11) NOT NULL, " +
+                "`event` varchar(35) NOT NULL DEFAULT ''," +
+                "`dbf_table_name` varchar(35) NOT NULL DEFAULT ''," +
+                "`table_name` varchar(35) NOT NULL DEFAULT ''," +
+                "`rows` int(11) NOT NULL," +
+                "`date_time` datetime NOT NULL," +
+                "PRIMARY KEY (`id`)" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
+                [this.bufferMySQL_DB, this.name_log_table],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL USE DATABASES Error: " + error);
+                    } else {
+                        eventEmitter.emit('create_log_table');
+                    }
+                });
+
+            eventEmitter.on('create_log_table', (function (_this) {
+                return function () {
+                    console.log('Созданна новая таблица:', _this.bufferMySQL_DB, _this.name_log_table);
+                    _this.show_tables(_this.bufferMySQL_DB, 'log');
+                    //_this.find_tables(_this.bufferMySQL_DB, _this.name_log_table);
+                }
+            })(this));
+        };
+
+        Distribution.prototype.stage_controller = function () {
+            this.close_connection();
+        };
 
         Distribution.prototype.drop_database = function (name_database) {
             //DROP DATABASES
@@ -301,60 +342,6 @@ router.get('/test', function (req, res, next) {
     var test = new Distribution();
     test.open_connection();
 
-    // var connection = openMySQLConnection(tableMySQL, showALLDataBases(function () {
-    //     closeMySQLConnection(connection);
-    // }));
-
     res.send('Иди смотри)');
 });
-
-router.get('/distribution', function (req, res, next) {
-
-    var startDbRecordTime = new Date().getTime();
-
-    res.send('Иди смотри)');
-});
-
-function openMySQLConnection(tableMySQL, callback) {
-    //Parameters MySQL connection
-    var connection = mysql.createConnection({
-        host: tableMySQL.host,
-        port: tableMySQL.port,
-        connectTimeout: 120000,
-        database: tableMySQL.name,
-        user: tableMySQL.user,
-        password: tableMySQL.password
-    });
-    //MySQL Connection
-    connection.connect(function () {
-        console.log('START MySQL CONNECTION');
-        callback();
-    });
-    return connection;
-}
-function closeMySQLConnection(connection) {
-    connection.end(function () {
-        console.log('CLOSE MYSQL CONNECTION');
-    });
-}
-
-function dateteMySQLTable(connection, mysql_table) {
-    connection.end(function () {
-        console.log('DROP DATABASE IF EXISTS ??', mysql_table);
-    });
-}
-
 module.exports = router;
-
-var showALLDataBases = function (callback) {
-    //SHOW ALL DATABASES
-    var result = connection.query('SHOW DATABASES',
-        function (error) {
-            if (error !== null) {
-                console.log("MySQL Clear Table Error: " + error);
-            } else {
-                console.log(result._results);
-                callback();
-            }
-        });
-};
