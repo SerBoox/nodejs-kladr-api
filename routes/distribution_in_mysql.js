@@ -10,14 +10,31 @@ var async = require('async');
 var Promise = require('promise');
 
 router.get('/test', function (req, res, next) {
-
     var startDbRecordTime = new Date().getTime();
+    var i = 0;
 
-    res.send('Иди смотри)');
+    /*var test = function(){
+     i++;
+     console.log('Иди смотри): ', i);
+     }; */
+
+    //eventEmitter.addListener('test', test);
+    eventEmitter.emit('test');
+
+    eventEmitter.once('test', (function () {
+        return function () {
+            i++;
+            console.log('Иди смотри): ', i);
+        }
+    })(res));
+
+
+    //eventEmitter.removeListener('test',test);
+
+    res.send('Иди смотри):');
 });
 
 router.get('/distribution', function (req, res, next) {
-    var startDbRecordTime = new Date().getTime();
     var Distribution, connection,
         __bind = function (fn, me) {
             return function () {
@@ -51,7 +68,9 @@ router.get('/distribution', function (req, res, next) {
             this.DBF_MySQL_Tables = [];
             this.databases = [];
             this.name_dbf_log_table = 'aa_record_time_log';
+            this.dbf_log_table_information = undefined;
             this.name_log_table = 'aa_record_time_log';
+            this.buffer_log_table_information = undefined;
             this.stage = 0;
         }
 
@@ -77,7 +96,7 @@ router.get('/distribution', function (req, res, next) {
                 }
             });
 
-            eventEmitter.on('show_databases', (function (_this) {
+            eventEmitter.once('show_databases', (function (_this) {
                 return function () {
                     _this.show_databases();
                 }
@@ -87,22 +106,26 @@ router.get('/distribution', function (req, res, next) {
 
         Distribution.prototype.show_databases = function () {
             //SHOW DATABASES
-            var data;
+            var data, dataLength;
             connection.query('SHOW DATABASES',
                 function (error, result) {
                     if (error !== null) {
                         console.log("MySQL SHOW DATABASES Error: " + error);
                     } else {
                         data = result;
+                        dataLength = result.length;
                         eventEmitter.emit('save_show_databases');
                     }
                 });
 
-            eventEmitter.on('save_show_databases', (function (_this) {
+            eventEmitter.once('save_show_databases', (function (_this) {
                 return function () {
                     _this.databases = data;
-                    console.log('Найденно баз: ' + data.length);
-                    _this.find_database(_this.tableMySQL.name);
+                    console.log('Найденно баз: ' + dataLength);
+                    if (dataLength !== undefined) _this.find_database(_this.tableMySQL.name);
+                    else {
+                        console.log('Внимание! Ни одной базы данных не найденно!');
+                    }
                 }
             })(this));
         };
@@ -123,10 +146,11 @@ router.get('/distribution', function (req, res, next) {
                     }
                 } else if ((i === dbListLength - 1) && (this.databases[i].Database != name_database)) {
                     console.log('База данных не найденна :', name_database);
-                    if (name_database == this.bufferMySQL_DB){
+                    if (name_database == this.bufferMySQL_DB) {
                         this.create_database(name_database);
                         return;
-                    }if (name_database == this.DBF_MySQL_DB) {
+                    }
+                    if (name_database == this.DBF_MySQL_DB) {
                         console.log('База данных хранящая основную импортируевую информацию отсутствует в MySQL!');
                         this.close_connection();
                         return;
@@ -146,7 +170,7 @@ router.get('/distribution', function (req, res, next) {
                 }
             });
 
-            eventEmitter.on('create_database', (function (_this) {
+            eventEmitter.once('create_database', (function (_this) {
                 return function () {
                     console.log('Созданна новая база данных:', name_database);
                     //_this.find_database(name_database);
@@ -168,7 +192,7 @@ router.get('/distribution', function (req, res, next) {
                     }
                 });
 
-            eventEmitter.on('use_database', (function (_this) {
+            eventEmitter.once('use_database', (function (_this) {
                 return function () {
                     console.log(name_database, data);
                     return data;
@@ -178,7 +202,7 @@ router.get('/distribution', function (req, res, next) {
 
         Distribution.prototype.show_tables = function (database, event) {
             //SHOW TABLES
-            var data, dataLength, i = 0;
+            var data, dataLength;
             connection.query('USE ??', database,
                 function (error, result) {
                     if (error !== null)
@@ -201,28 +225,22 @@ router.get('/distribution', function (req, res, next) {
                     }
                 });
 
-            eventEmitter.on('save_show_tables', (function (_this) {
+            eventEmitter.once('save_show_tables', (function (_this) {
                 return function () {
-                    if ((database === _this.DBF_MySQL_DB) && (i === 0)) {
+                    if (database === _this.DBF_MySQL_DB) {
                         _this.DBF_MySQL_Tables = (data.length > 0) ? data : [];
-                        console.log('В базе: ' + database + ' найденно таблиц: ' + dataLength,'event', event);
+                        console.log('В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event', event);
                         if (dataLength === 7) console.log('Число ' + dataLength + ' соответствует необходимому значению числа таблиц!');
                         else console.log('Внимание! ' + dataLength + ' таблиц может быть недостаточно для полного распределения данных!');
                         if (event === 'log') {
-                            if (i === 0) {
-                                i++;
-                                _this.find_tables(_this.DBF_MySQL_DB, _this.name_dbf_log_table);
-                            }
+                            _this.find_tables(_this.DBF_MySQL_DB, _this.name_dbf_log_table);
                         }
 
-                    } else if ((database === _this.bufferMySQL_DB) && (i === 0)) {
+                    } else if (database === _this.bufferMySQL_DB) {
                         _this.bufferMySQL_Tables = (data.length > 0) ? data : [];
-                        console.log('В базе: ' + database + ' найденно таблиц: ' + dataLength,'event', event);
+                        console.log('В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event', event);
                         if (event === 'log') {
-                            if (i === 0) {
-                                i++;
-                                _this.find_tables(_this.bufferMySQL_DB, _this.name_log_table);
-                            }
+                            _this.find_tables(_this.bufferMySQL_DB, _this.name_log_table);
                         }
                     }
                 }
@@ -296,7 +314,7 @@ router.get('/distribution', function (req, res, next) {
                     }
                 });
 
-            eventEmitter.on('create_log_table', (function (_this) {
+            eventEmitter.once('create_log_table', (function (_this) {
                 return function () {
                     console.log('Созданна новая таблица:', _this.bufferMySQL_DB, _this.name_log_table);
                     _this.show_tables(_this.bufferMySQL_DB, 'log');
@@ -306,7 +324,46 @@ router.get('/distribution', function (req, res, next) {
         };
 
         Distribution.prototype.stage_controller = function () {
+            console.log('ACTIVATE STAGE_CONTROLLER');
+            if (this.dbf_log_table_information == undefined) {
+                this.select_all(this.DBF_MySQL_DB, this.name_dbf_log_table);
+                return false;
+            }else if(this.buffer_log_table_information == undefined){
+                this.select_all(this.bufferMySQL_DB, this.name_log_table);
+                return false;
+            }
+
             this.close_connection();
+        };
+
+        Distribution.prototype.select_all = function (name_database, name_table) {
+            //SELECT ALL
+            var data;
+            connection.query('SELECT * FROM ??.??', [name_database, name_table],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL USE DATABASES Error: " + error);
+                    } else {
+                        data = result;
+                        eventEmitter.emit('select_all');
+                    }
+                });
+
+            eventEmitter.once('select_all', (function (_this) {
+                return function () {
+                    console.log('SELECT * FROM', name_database, name_table);
+                    if ((_this.DBF_MySQL_DB === name_database) && (_this.name_dbf_log_table === name_table)) {
+                        _this.dbf_log_table_information = data;
+                        _this.stage_controller();
+                        return false;
+
+                    } else if ((_this.bufferMySQL_DB === name_database) && (_this.name_log_table === name_table)) {
+                        _this.buffer_log_table_information = data;
+                        _this.stage_controller();
+                        return false;
+                    }
+                }
+            })(this));
         };
 
         Distribution.prototype.drop_database = function (name_database) {
@@ -321,7 +378,7 @@ router.get('/distribution', function (req, res, next) {
                 }
             );
 
-            eventEmitter.on('drop_database', (function (_this) {
+            eventEmitter.once('drop_database', (function (_this) {
                 return function () {
                     console.log('База данных' + name_database + 'удалена!');
                 }
@@ -334,6 +391,7 @@ router.get('/distribution', function (req, res, next) {
                 console.log('CLOSE MYSQL CONNECTION');
             });
         };
+
         return Distribution;
 
     })(eventEmitter);
