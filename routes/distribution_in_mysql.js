@@ -86,7 +86,9 @@ router.get('/distribution', function (req, res, next) {
                 socrbase: 'aa_socrbase',
                 regions: 'aa_regions'
             };
-            this.query_limit = 0;
+            this.row = 0;
+            this.query_limit = 20;
+            this.query_limit_error = 30;
         }
 
 
@@ -106,7 +108,7 @@ router.get('/distribution', function (req, res, next) {
                 if (error !== null) {
                     console.log('MySQL connection Error: ' + error);
                 } else {
-                    console.log('open_connection:', 'START MySQL CONNECTION');
+                    console.log('START MySQL CONNECTION');
                     eventEmitter.emit('show_databases');
                 }
             });
@@ -167,8 +169,7 @@ router.get('/distribution', function (req, res, next) {
                     }
                     if (name_database == this.DBF_MySQL_DB) {
                         console.log('find_database:', 'База данных хранящая основную импортируевую информацию отсутствует в MySQL!');
-                        this.close_connection();
-                        return;
+                        return this.close_connection();
                     }
 
                 }
@@ -188,8 +189,7 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('create_database', (function (_this) {
                 return function () {
                     console.log('create_database:', 'Созданна новая база данных:', name_database);
-                    //_this.find_database(name_database);
-                    _this.close_connection();
+                    _this.show_databases();
                 }
             })(this));
         };
@@ -421,6 +421,7 @@ router.get('/distribution', function (req, res, next) {
             //CREATE REGION TABLE
             connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
                 "`id` int(11) NOT NULL AUTO_INCREMENT," +
+                "`dbf_id` varchar(11) NOT NULL DEFAULT ''," +
                 "`number` varchar(5) NOT NULL DEFAULT ''," +
                 "`name` varchar(80) NOT NULL DEFAULT ''," +
                 "`socr` varchar(20) NOT NULL DEFAULT ''," +
@@ -450,7 +451,7 @@ router.get('/distribution', function (req, res, next) {
         };
 
         Distribution.prototype.stage_controller = function () {
-            console.log('ACTIVATE STAGE_CONTROLLER', 'STAGE:',this.stage);
+            console.log('ACTIVATE STAGE_CONTROLLER', 'STAGE:', this.stage);
             //Получаем информацию из таблиц с логами
             if (this.dbf_log_table_information == undefined)
                 return this.select_all(this.DBF_MySQL_DB, this.dbf_tables.log);
@@ -460,24 +461,18 @@ router.get('/distribution', function (req, res, next) {
                 return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.socrbase);
             else if (this.buffer_region_table_information == undefined)
                 return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
-            //Сбрасываем значения в зависимости от имеющихся данных
-            if ((this.buffer_log_table_information == ![]) || (this.buffer_region_table_information == ![])) {
-                this.start_stage = 0;
-                this.stage = 0;
+
+            if (this.stage === 0) {
+                //Удаляем все лишние таблицы
+                return this.delete_all_tables_stage_0();
             }
 
-            //Выполняем необходимые действия для нулевой стадии
-            if ((this.start_stage == 0) && (this.stage == 0)) {
-                //Удаляем все лишние таблицы
-                 this.delete_all_tables_stage_0();
-                //Написать механизм переноса данных по регионам
-                //В котором в начале нужно получать
-             }
+            if (this.stage === 1) {
+                //Перенос данных по регионам
+                return this.distribution_region();
+            }
 
-
-            //console.log(this.buffer_log_table_information, (this.buffer_log_table_information == ![]));
-            //console.log(this.buffer_region_table_information, (this.buffer_region_table_information == ![]));
-            this.close_connection();
+            //return this.close_connection();
         };
 
         Distribution.prototype.select_all = function (name_database, name_table) {
@@ -520,62 +515,181 @@ router.get('/distribution', function (req, res, next) {
         };
 
         Distribution.prototype.delete_all_tables_stage_0 = function () {
-            var key, keyBuffer, arrayLength,i;
-            arrayLength =  this.bufferMySQL_Tables.length;
-            for(keyBuffer in  this.bufferMySQL_Tables[0]) key = keyBuffer;
-            for(i = 0;i < arrayLength;i++){
-                switch(this.bufferMySQL_Tables[i][key]){
+            var key, keyBuffer, arrayLength, i;
+            console.log('delete_all_tables_stage_0:','Внимание! Запущенна очистка всех лишних таблиц!');
+            arrayLength = this.bufferMySQL_Tables.length;
+            for (keyBuffer in  this.bufferMySQL_Tables[0]) key = keyBuffer;
+            for (i = 0; i < arrayLength; i++) {
+                switch (this.bufferMySQL_Tables[i][key]) {
                     case(this.buffer_main_tables.log):
-                          break;
+                        break;
                     case(this.buffer_main_tables.socrbase):
                         break;
                     case(this.buffer_main_tables.regions):
                         break;
                     default:
-                      this.drop_table(this.bufferMySQL_DB,this.bufferMySQL_Tables[i][key]);
+                        this.drop_table(this.bufferMySQL_DB, this.bufferMySQL_Tables[i][key]);
+                }
+                if(i == (arrayLength - 1)){
+                    this.stage++;
+                    this.stage_controller();
                 }
             }
         };
 
-        Distribution.prototype.get_region = function () {
-            //SELECT ALL
-            var data;
-            connection.query('SELECT * FROM ??.??', [name_database, name_table],
-                function (error, result) {
-                    if (error !== null) {
-                        console.log("MySQL USE DATABASES Error: " + error);
-                    } else {
-                        data = result;
-                        eventEmitter.emit('select_all');
-                    }
-                });
+        Distribution.prototype.distribution_region = function (start_row, finish_row, event) {
+            //DISTRIBUTION REGION
+            console.log('ACTIVATE DISTRIBUTION_REGION', 'STAGE:', this.stage);
+            var data, dataLength = 0, row = 0, first_row = 0 ,row_now = 0, end_row = 0, limit = 0, i = 0;
+            //Получаем общее колличество строк в запросе
+            if (event !== 'recursion') {
+                connection.query("SELECT COUNT(*) " +
+                    "FROM  ??.??" +
+                    "WHERE (" +
+                    "`socr` =  'Респ'" +
+                    "OR  `socr` =  'край'" +
+                    "OR  `socr` =  'обл'" +
+                    "OR  `socr` =  'АО'" +
+                    "OR  `socr` =  'Аобл')" +
+                    "AND  `code` LIKE  '%0000000000%'" +
+                    "ORDER BY  `code` ASC",
+                    [this.DBF_MySQL_DB, this.dbf_tables.kladr],
+                    function (error, result) {
+                        if (error !== null) {
+                            console.log("MySQL SELECT REGION Error: " + error);
+                        } else {
+                            row = result[0]['COUNT(*)'];
+                            eventEmitter.emit('cleaner_region_table');
+                        }
+                    });
+            }
 
-            eventEmitter.once('select_all', (function (_this) {
+            eventEmitter.once('cleaner_region_table', (function (_this) {
                 return function () {
-                    console.log('SELECT * FROM', name_database, name_table);
-                    if ((_this.DBF_MySQL_DB === name_database) && (_this.dbf_tables.log === name_table)) {
-                        _this.dbf_log_table_information = data;
-                        _this.stage_controller();
-                        return false;
+                    connection.query('TRUNCATE TABLE  ??.??',
+                        [_this.bufferMySQL_DB, _this.buffer_main_tables.regions],
+                        function (error, result) {
+                            if (error !== null) {
+                                console.log("MySQL Clear region Table Error: " + error);
+                            } else {
+                                console.log('distribution_region:', 'Очистка таблицы прошла успешно:', _this.bufferMySQL_DB, _this.buffer_main_tables.regions);
+                                eventEmitter.emit('get_region_count')
+                            }
+                        }
+                    );
+                }
+            })(this));
 
-                    } else if ((_this.bufferMySQL_DB === name_database) && (_this.buffer_main_tables.log === name_table)) {
-                        _this.buffer_log_table_information = data;
-                        _this.stage_controller();
-                        return false;
-                    } else if ((_this.bufferMySQL_DB === name_database) && (_this.buffer_main_tables.regions === name_table)) {
-                        _this.buffer_region_table_information = data;
-                        _this.stage_controller();
-                        return false;
+            eventEmitter.once('get_region_count', (function (_this) {
+                return function () {
+                    console.log('distribution_region:', 'В таблице строк', _this.DBF_MySQL_DB, _this.dbf_tables.kladr, row);
+                    if ((start_row !== undefined) && (start_row < row) && (start_row !== finish_row)) {
+                        if ((finish_row !== undefined) && (finish_row <= row)) {
+                            first_row = row_now = start_row;
+                            end_row = finish_row;
+                            eventEmitter.emit('get_region');
+                        } else {
+                            first_row = row_now = start_row;
+                            end_row = row;
+                            eventEmitter.emit('get_region');
+                        }
+                    } else {
+                        first_row = row_now = 0;
+                        end_row = row;
+                        eventEmitter.emit('get_region');
                     }
+                }
+            })(this));
 
+            eventEmitter.once('get_region', (function (_this) {
+                return function () {
+                    //Нужно посчитать LIMIT для текущего захода
+                    if ((end_row - row_now) <= _this.query_limit) {
+                        limit = (end_row - row_now);
+                        console.log('distribution_region:', 'Запрашиваю все строки:', limit);
+                    } else if (((end_row - row_now) > _this.query_limit) && ((end_row - row_now) <= (_this.query_limit + _this.query_limit_error))) {
+                        limit = (end_row - row_now);
+                        console.log('distribution_region:', 'Запрашиваю строки c превышением лимита:', limit);
+                    } else if ((end_row - row_now) > (_this.query_limit + _this.query_limit_error)) {
+                        limit = _this.query_limit;
+                        console.log('distribution_region:', 'Запрашиваю строки упершись в лимит:', limit);
+                    }
+                    connection.query("SELECT * " +
+                        "FROM  ??.?? " +
+                        "WHERE ( " +
+                        "`socr` =  'Респ' " +
+                        "OR  `socr` =  'край' " +
+                        "OR  `socr` =  'обл' " +
+                        "OR  `socr` =  'АО' " +
+                        "OR  `socr` =  'Аобл') " +
+                        "AND  `code` LIKE  '%0000000000%' " +
+                        "ORDER BY  `code` ASC " +
+                        "LIMIT ? , ?; ",
+                        [_this.DBF_MySQL_DB, _this.dbf_tables.kladr, row_now, limit],
+                        function (error, result) {
+                            if (error !== null) {
+                                console.log("MySQL SELECT * region Error: " + error);
+                            } else {
+                                data = result;
+                                dataLength = result.length;
+                                //console.log(result[0]);
+                                //console.log(result.length);
+                                eventEmitter.emit('distribution_region');
+                            }
+                        });
+                }
+            })(this));
+
+            eventEmitter.once('distribution_region', (function (_this) {
+                return function () {
+                    for (i = 0; i < dataLength; i++) {
+                        connection.query("INSERT INTO ??.?? " +
+                            "(`id`,`dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, " +
+                            "`uno`, `ocatd`, `status`) " +
+                            "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                            [_this.bufferMySQL_DB, _this.buffer_main_tables.regions, data[i].id, data[i].code.slice(0, 3),
+                                data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb,
+                                data[i].uno, data[i].ocatd, data[i].status],
+                            function (error, result) {
+                                if (error !== null) {
+                                    console.log("MySQL INSERT regions Error: " + error);
+                                } else {
+                                    row_now++;
+                                    console.log('distribution_region:', 'Запись строки прошла успешно строка:', row_now);
+                                    if ((first_row + limit) == result.insertId) {
+                                        eventEmitter.emit('next_get_region_iteration');
+                                    }
+                                }
+                            });
+                    }
+                }
+            })(this));
+
+            if (event === 'recursion') {
+                console.log('distribution_region:', 'Рекурсивный запрос прошел успешно', start_row, finish_row);
+                first_row = row_now = start_row;
+                end_row = finish_row;
+                eventEmitter.emit('get_region');
+            }
+
+            eventEmitter.once('next_get_region_iteration', (function (_this) {
+                return function () {
+                    if (row_now < end_row) {
+                        console.log('distribution_region:', 'Произвожу рекурсивный запрос', row_now, end_row);
+                        //_this.distribution_region(row_now, end_row, 'recursion');
+                    } else {
+                        console.log('distribution_region:', 'Запись произведена успешно', row_now, end_row);
+                        _this.stage++;
+                        _this.stage_controller();
+                    }
                 }
             })(this));
         };
 
-        Distribution.prototype.drop_table = function (name_database,name_table) {
+        Distribution.prototype.drop_table = function (name_database, name_table) {
             //DROP DATABASES
             connection.query('DROP TABLE IF EXISTS ??.??',
-                [name_database,name_table],
+                [name_database, name_table],
                 function (error, result) {
                     if (error !== null) {
                         console.log("MySQL DROP TABLE Error: " + error);
@@ -587,7 +701,7 @@ router.get('/distribution', function (req, res, next) {
 
             eventEmitter.once('drop_table', (function (_this) {
                 return function () {
-                    console.log('drop_table:','Внимание! Таблица Удалена',name_database,name_table);
+                    console.log('drop_table:', 'Внимание! Таблица Удалена', name_database, name_table);
                 }
             })(this));
         };
