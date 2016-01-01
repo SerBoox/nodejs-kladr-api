@@ -73,8 +73,6 @@ router.get('/distribution', function (req, res, next) {
             this.start_stage = 0;
             this.stage = 0;
             this.finish_stage = 0;
-            this.query_limit = 0;
-
             this.socrase_table_information = undefined;
             this.dbf_tables = {
                 log: 'aa_record_time_log',
@@ -88,7 +86,7 @@ router.get('/distribution', function (req, res, next) {
                 socrbase: 'aa_socrbase',
                 regions: 'aa_regions'
             };
-
+            this.query_limit = 0;
         }
 
 
@@ -452,7 +450,7 @@ router.get('/distribution', function (req, res, next) {
         };
 
         Distribution.prototype.stage_controller = function () {
-            console.log('ACTIVATE STAGE_CONTROLLER');
+            console.log('ACTIVATE STAGE_CONTROLLER', 'STAGE:',this.stage);
             //Получаем информацию из таблиц с логами
             if (this.dbf_log_table_information == undefined)
                 return this.select_all(this.DBF_MySQL_DB, this.dbf_tables.log);
@@ -469,15 +467,16 @@ router.get('/distribution', function (req, res, next) {
             }
 
             //Выполняем необходимые действия для нулевой стадии
-            /*if ((this.start_stage == 0) && (this.stage == 0)) {
-             if (this.socrase_table_information == undefined) {
-             return this.distribution_socrbase();
+            if ((this.start_stage == 0) && (this.stage == 0)) {
+                //Удаляем все лишние таблицы
+                 this.delete_all_tables_stage_0();
+                //Написать механизм переноса данных по регионам
+                //В котором в начале нужно получать
              }
-             }*/
 
 
-            console.log(this.buffer_log_table_information, (this.buffer_log_table_information == ![]));
-            console.log(this.buffer_region_table_information, (this.buffer_region_table_information == ![]));
+            //console.log(this.buffer_log_table_information, (this.buffer_log_table_information == ![]));
+            //console.log(this.buffer_region_table_information, (this.buffer_region_table_information == ![]));
             this.close_connection();
         };
 
@@ -520,6 +519,24 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
+        Distribution.prototype.delete_all_tables_stage_0 = function () {
+            var key, keyBuffer, arrayLength,i;
+            arrayLength =  this.bufferMySQL_Tables.length;
+            for(keyBuffer in  this.bufferMySQL_Tables[0]) key = keyBuffer;
+            for(i = 0;i < arrayLength;i++){
+                switch(this.bufferMySQL_Tables[i][key]){
+                    case(this.buffer_main_tables.log):
+                          break;
+                    case(this.buffer_main_tables.socrbase):
+                        break;
+                    case(this.buffer_main_tables.regions):
+                        break;
+                    default:
+                      this.drop_table(this.bufferMySQL_DB,this.bufferMySQL_Tables[i][key]);
+                }
+            }
+        };
+
         Distribution.prototype.get_region = function () {
             //SELECT ALL
             var data;
@@ -555,12 +572,32 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
+        Distribution.prototype.drop_table = function (name_database,name_table) {
+            //DROP DATABASES
+            connection.query('DROP TABLE IF EXISTS ??.??',
+                [name_database,name_table],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL DROP TABLE Error: " + error);
+                    } else {
+                        eventEmitter.emit('drop_table');
+                    }
+                }
+            );
+
+            eventEmitter.once('drop_table', (function (_this) {
+                return function () {
+                    console.log('drop_table:','Внимание! Таблица Удалена',name_database,name_table);
+                }
+            })(this));
+        };
+
         Distribution.prototype.drop_database = function (name_database) {
             //DROP DATABASES
             connection.query('DROP DATABASE IF EXISTS ??`', name_database,
                 function (error, result) {
                     if (error !== null) {
-                        console.log("MySQL SHOW DATABASES Error: " + error);
+                        console.log("MySQL DROP DATABASES Error: " + error);
                     } else {
                         eventEmitter.emit('drop_database');
                     }
