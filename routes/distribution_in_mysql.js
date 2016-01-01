@@ -67,13 +67,28 @@ router.get('/distribution', function (req, res, next) {
             this.DBF_MySQL_DB = parameters.DataBase.kladr_dbf.name;
             this.DBF_MySQL_Tables = [];
             this.databases = [];
-            this.name_dbf_log_table = 'aa_record_time_log';
             this.dbf_log_table_information = undefined;
-            this.name_log_table = 'aa_record_time_log';
             this.buffer_log_table_information = undefined;
-            this.buffer_region_table_name = 'aa_regions';
             this.buffer_region_table_information = undefined;
+            this.start_stage = 0;
             this.stage = 0;
+            this.finish_stage = 0;
+            this.query_limit = 0;
+
+            this.socrase_table_information = undefined;
+            this.dbf_tables = {
+                log: 'aa_record_time_log',
+                socrbase: 'socrbase',
+                kladr: 'kladr',
+                street: 'street',
+                doma: 'doma'
+            };
+            this.buffer_main_tables = {
+                log: 'aa_record_time_log',
+                socrbase: 'aa_socrbase',
+                regions: 'aa_regions'
+            };
+
         }
 
 
@@ -235,22 +250,24 @@ router.get('/distribution', function (req, res, next) {
                         if (dataLength === 7) console.log('show_tables:', 'Число ' + dataLength + ' соответствует необходимому значению числа таблиц!');
                         else console.log('show_tables:', 'Внимание! ' + dataLength + ' таблиц может быть недостаточно для полного распределения данных!');
                         if (event === 'update') {
-                            _this.find_main_tables(_this.DBF_MySQL_DB, _this.name_dbf_log_table);
+                            _this.validate_main_tables(_this.DBF_MySQL_DB);
                         }
 
                     } else if (database === _this.bufferMySQL_DB) {
                         _this.bufferMySQL_Tables = (dataLength > 0) ? data : [];
                         console.log('show_tables:', 'В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event', event);
                         if (event === 'update') {
-                            _this.find_main_tables(_this.bufferMySQL_DB, _this.name_log_table);
+                            _this.validate_main_tables(_this.bufferMySQL_DB);
                         }
                     }
                 }
             })(this));
         };
 
-        Distribution.prototype.find_main_tables = function (name_database, name_table) {
-            var data, dbListLength, keyObject, key, i, j;
+        Distribution.prototype.validate_main_tables = function (name_database) {
+            var data, dbListLength, keyObject, key, i, dfb_table_index = 0;
+            var buffer_log_index = 0, buffer_socrbase_index = 0, buffer_region_index = 0;
+
             if (name_database === undefined) return false;
             if (name_database == this.DBF_MySQL_DB) {
                 data = this.DBF_MySQL_Tables;
@@ -262,63 +279,82 @@ router.get('/distribution', function (req, res, next) {
             //Получение ключа объекта
             for (keyObject in data[0]) key = keyObject;
 
-            //Создание главной таблици в базе
-            //console.log('find_main_tables: ', dbListLength, data.length, data); //Число объектов в массиве
+            //Создание главной таблицы в базе
+            //console.log('validate_main_tables: ', dbListLength, data.length, data); //Число объектов в массиве
             if ((data.length === 0) && (name_database == this.bufferMySQL_DB)) {
-                console.log('find_main_tables', 'Приступаю к созданию первой таблици в базе: ' + name_database);
+                console.log('validate_main_tables', 'Приступаю к созданию первой таблицы в базе: ' + name_database);
                 this.create_log_table();
                 this.stage = 0;
                 return false;
-            }
-
-            //Поиск по базе ести в ней есть таблицы
-            for (i = 0; i < dbListLength; i++) {
-                console.log('find_main_tables:', i, name_table, '==', data[i][key], (name_table == data[i][key]));
-                if (data[i][key] == name_table) {
-                    if ((this.DBF_MySQL_DB == name_database) && (name_table == this.name_dbf_log_table)) {
-                        console.log('find_main_tables:', 'Таблица DBF логов найденна:', name_database, name_table);
-                        return this.show_tables(this.bufferMySQL_DB, 'update');
-
-                    } else if ((this.bufferMySQL_DB == name_database) && (name_table == this.name_log_table)) {
-                        console.log('find_main_tables: ', 'Таблица buffer log найденна:', name_database, name_table);
-                        for (j = 0; j < dbListLength; j++) {
-                            if (data[j][key] == this.buffer_region_table_name) {
-                                console.log('find_main_tables:', 'Таблица buffer regions найденна:', name_database, name_table);
-                                return this.stage_controller();
-                            }else if(j == dbListLength - 1){
-                                console.log('find_main_tables:', 'Внимание! Таблица buffer regions не найденна:', name_database, name_table);
-                                return this.create_regions_table();
-
-                            }
-                        }
-
-                    } else if ((this.bufferMySQL_DB == name_database) && (name_table == this.buffer_region_table_name)) {
-                        console.log('find_main_tables:', 'Таблица buffer regions найденна:', name_database, name_table);
-                        for (j = 0; j < dbListLength; j++) {
-                            if (data[j][key] == this.name_log_table) {
-                                console.log('find_main_tables:', 'Таблица buffer log найденна:', name_database, name_table);
-                                return this.stage_controller();
-                            }else if(j == dbListLength - 1){
-                                console.log('find_main_tables:', 'Внимание! Таблица buffer regions не найденна:', name_database, name_table);
-                                return this.create_log_table();
-                            }
-                        }
+            } else if (this.DBF_MySQL_DB == name_database) {
+                for (i = 0; i < dbListLength; i++) {
+                    switch (data[i][key]) {
+                        case(this.dbf_tables.log):
+                            console.log('validate_main_tables:', 'Таблица найденна:', this.DBF_MySQL_DB, this.dbf_tables.log);
+                            dfb_table_index++;
+                            break;
+                        case(this.dbf_tables.socrbase):
+                            console.log('validate_main_tables:', 'Таблица найденна:', this.DBF_MySQL_DB, this.dbf_tables.socrbase);
+                            dfb_table_index++;
+                            break;
+                        case(this.dbf_tables.kladr):
+                            console.log('validate_main_tables:', 'Таблица найденна:', this.DBF_MySQL_DB, this.dbf_tables.kladr);
+                            dfb_table_index++;
+                            break;
+                        case(this.dbf_tables.street):
+                            console.log('validate_main_tables:', 'Таблица найденна:', this.DBF_MySQL_DB, this.dbf_tables.street);
+                            dfb_table_index++;
+                            break;
+                        case(this.dbf_tables.doma):
+                            console.log('validate_main_tables:', 'Таблица найденна:', this.DBF_MySQL_DB, this.dbf_tables.doma);
+                            dfb_table_index++;
+                            break;
                     }
-                } else if ((i === dbListLength - 1) && (data[i][key] != name_table)) {
-                    if ((this.DBF_MySQL_DB == name_database) && (name_table == this.name_dbf_log_table)) {
-                        console.log('find_main_tables:', 'Внимание! Таблица DBF log не найденна:', name_database, name_table);
+                    if (i == (dbListLength - 1)) {
+                        if (dfb_table_index === 5)
+                            console.log('validate_main_tables:', 'Все основные таблицы на месте index =', dfb_table_index);
+                        else
+                            console.log('validate_main_tables:', 'Внимание! часть таблиц отсутствует index =', dfb_table_index);
                         return this.show_tables(this.bufferMySQL_DB, 'update');
-
-                    } else if ((this.bufferMySQL_DB == name_database) && (name_table == this.name_log_table)) {
-                        console.log('find_main_tables:', 'Внимание! Таблица buffer log не найденна:', name_database, name_table);
-                        return this.create_log_table();
-
-                    } else if ((this.bufferMySQL_DB == name_database) && (name_table == this.buffer_region_table_name)) {
-                        console.log('find_main_tables:', 'Внимание! Таблица buffer regions не найденна:', name_database, name_table);
-                        return this.create_regions_table();
+                    }
+                }
+            } else if (this.bufferMySQL_DB == name_database) {
+                for (i = 0; i < dbListLength; i++) {
+                    switch (data[i][key]) {
+                        case(this.buffer_main_tables.log):
+                            console.log('validate_main_tables:', 'Таблица найденна:', this.bufferMySQL_DB, this.buffer_main_tables.log);
+                            buffer_log_index++;
+                            break;
+                        case(this.buffer_main_tables.socrbase):
+                            console.log('validate_main_tables:', 'Таблица найденна:', this.bufferMySQL_DB, this.buffer_main_tables.socrbase);
+                            buffer_socrbase_index++;
+                            break;
+                        case(this.buffer_main_tables.regions):
+                            console.log('validate_main_tables:', 'Таблица найденна:', this.bufferMySQL_DB, this.buffer_main_tables.regions);
+                            buffer_region_index++;
+                            break;
+                    }
+                    if (i == dbListLength - 1) {
+                        if (buffer_log_index !== 1) {
+                            console.log('validate_main_tables:', 'Внимание! Таблица отсутствует:', this.bufferMySQL_DB, this.buffer_main_tables.log);
+                            return this.create_log_table();
+                        }
+                        if (buffer_socrbase_index !== 1) {
+                            console.log('validate_main_tables:', 'Внимание! Таблица отсутствует:', this.bufferMySQL_DB, this.buffer_main_tables.socrbase);
+                            return this.distribution_socrbase();
+                        }
+                        if (buffer_region_index !== 1) {
+                            console.log('validate_main_tables:', 'Внимание! Таблица отсутствует:', this.bufferMySQL_DB, this.buffer_main_tables.region);
+                            return this.create_regions_table();
+                        }
+                        if ((buffer_log_index + buffer_socrbase_index + buffer_region_index) === 3) {
+                            console.log('validate_main_tables:', 'Все основные таблицы на месте index =', 3);
+                            return this.stage_controller();
+                        }
                     }
                 }
             }
+
         };
 
         Distribution.prototype.create_log_table = function () {
@@ -333,7 +369,7 @@ router.get('/distribution', function (req, res, next) {
                 "`date_time` datetime NOT NULL," +
                 "PRIMARY KEY (`id`)" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
-                [this.bufferMySQL_DB, this.name_log_table],
+                [this.bufferMySQL_DB, this.buffer_main_tables.log],
                 function (error, result) {
                     if (error !== null) {
                         console.log("MySQL CREATE TABLE Error: " + error);
@@ -344,8 +380,41 @@ router.get('/distribution', function (req, res, next) {
 
             eventEmitter.once('create_log_table', (function (_this) {
                 return function () {
-                    console.log('create_log_table:', 'Созданна новая таблица:', _this.bufferMySQL_DB, _this.name_log_table);
+                    console.log('create_log_table:', 'Созданна новая таблица:', _this.bufferMySQL_DB, _this.buffer_main_tables.log);
                     _this.show_tables(_this.bufferMySQL_DB, 'update'); //Обновляю данные
+                }
+            })(this));
+        };
+
+        Distribution.prototype.distribution_socrbase = function () {
+            //SELECT ALL
+            var data, bufferMySQL_DB = this.bufferMySQL_DB, socrase_table_name = this.buffer_main_tables.socrbase;
+            connection.query('CREATE TABLE ??.?? LIKE ??.??;',
+                [this.bufferMySQL_DB, this.buffer_main_tables.socrbase, this.DBF_MySQL_DB, this.dbf_tables.socrbase],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL USE DATABASES Error: " + error);
+                    } else {
+                        console.log('distribution_socrbase:', 'Создание базы прошло успешно', bufferMySQL_DB, socrase_table_name)
+                    }
+                });
+
+            connection.query('INSERT INTO ??.?? SELECT * FROM ??.??;',
+                [this.bufferMySQL_DB, this.buffer_main_tables.socrbase, this.DBF_MySQL_DB, this.dbf_tables.socrbase],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL USE DATABASES Error: " + error);
+                    } else {
+                        data = result;
+                        eventEmitter.emit('distribution_socrbase');
+                    }
+                });
+
+            eventEmitter.once('distribution_socrbase', (function (_this) {
+                return function () {
+                    //console.log(data);
+                    console.log('distribution_socrbase:', 'Перенос данных прошел успешно', bufferMySQL_DB, socrase_table_name);
+                    return _this.show_tables(_this.bufferMySQL_DB, 'update');
                 }
             })(this));
         };
@@ -365,7 +434,7 @@ router.get('/distribution', function (req, res, next) {
                 "`status` varchar(11) NOT NULL DEFAULT ''," +
                 "PRIMARY KEY (`id`)" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
-                [this.bufferMySQL_DB, this.buffer_region_table_name],
+                [this.bufferMySQL_DB, this.buffer_main_tables.regions],
                 function (error, result) {
                     if (error !== null) {
                         console.log("MySQL CREATE TABLE Error: " + error);
@@ -376,7 +445,7 @@ router.get('/distribution', function (req, res, next) {
 
             eventEmitter.once('create_regions_table', (function (_this) {
                 return function () {
-                    console.log('create_regions_table:', 'Созданна новая таблица:', _this.bufferMySQL_DB, _this.buffer_region_table_name);
+                    console.log('create_regions_table:', 'Созданна новая таблица:', _this.bufferMySQL_DB, _this.buffer_main_tables.regions);
                     _this.show_tables(_this.bufferMySQL_DB, 'update'); //Обновляю данные
                 }
             })(this));
@@ -386,13 +455,29 @@ router.get('/distribution', function (req, res, next) {
             console.log('ACTIVATE STAGE_CONTROLLER');
             //Получаем информацию из таблиц с логами
             if (this.dbf_log_table_information == undefined)
-                return this.select_all(this.DBF_MySQL_DB, this.name_dbf_log_table);
+                return this.select_all(this.DBF_MySQL_DB, this.dbf_tables.log);
             else if (this.buffer_log_table_information == undefined)
-                return this.select_all(this.bufferMySQL_DB, this.name_log_table);
+                return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.log);
+            else if (this.socrase_table_information == undefined)
+                return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.socrbase);
             else if (this.buffer_region_table_information == undefined)
-                return this.select_all(this.bufferMySQL_DB, this.buffer_region_table_name);
+                return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+            //Сбрасываем значения в зависимости от имеющихся данных
+            if ((this.buffer_log_table_information == ![]) || (this.buffer_region_table_information == ![])) {
+                this.start_stage = 0;
+                this.stage = 0;
+            }
 
-            console.log(this.buffer_log_table_information);
+            //Выполняем необходимые действия для нулевой стадии
+            /*if ((this.start_stage == 0) && (this.stage == 0)) {
+             if (this.socrase_table_information == undefined) {
+             return this.distribution_socrbase();
+             }
+             }*/
+
+
+            console.log(this.buffer_log_table_information, (this.buffer_log_table_information == ![]));
+            console.log(this.buffer_region_table_information, (this.buffer_region_table_information == ![]));
             this.close_connection();
         };
 
@@ -412,16 +497,55 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('select_all', (function (_this) {
                 return function () {
                     console.log('SELECT * FROM', name_database, name_table);
-                    if ((_this.DBF_MySQL_DB === name_database) && (_this.name_dbf_log_table === name_table)) {
+                    if ((_this.DBF_MySQL_DB === name_database) && (_this.dbf_tables.log === name_table)) {
                         _this.dbf_log_table_information = data;
                         _this.stage_controller();
                         return false;
 
-                    } else if ((_this.bufferMySQL_DB === name_database) && (_this.name_log_table === name_table)) {
+                    } else if ((_this.bufferMySQL_DB === name_database) && (_this.buffer_main_tables.log === name_table)) {
                         _this.buffer_log_table_information = data;
                         _this.stage_controller();
                         return false;
-                    } else if ((_this.bufferMySQL_DB === name_database) && (_this.buffer_region_table_name === name_table)) {
+                    } else if ((_this.bufferMySQL_DB === name_database) && (_this.buffer_main_tables.socrbase === name_table)) {
+                        _this.socrase_table_information = data;
+                        _this.stage_controller();
+                        return false;
+                    } else if ((_this.bufferMySQL_DB === name_database) && (_this.buffer_main_tables.regions === name_table)) {
+                        _this.buffer_region_table_information = data;
+                        _this.stage_controller();
+                        return false;
+                    }
+
+                }
+            })(this));
+        };
+
+        Distribution.prototype.get_region = function () {
+            //SELECT ALL
+            var data;
+            connection.query('SELECT * FROM ??.??', [name_database, name_table],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL USE DATABASES Error: " + error);
+                    } else {
+                        data = result;
+                        eventEmitter.emit('select_all');
+                    }
+                });
+
+            eventEmitter.once('select_all', (function (_this) {
+                return function () {
+                    console.log('SELECT * FROM', name_database, name_table);
+                    if ((_this.DBF_MySQL_DB === name_database) && (_this.dbf_tables.log === name_table)) {
+                        _this.dbf_log_table_information = data;
+                        _this.stage_controller();
+                        return false;
+
+                    } else if ((_this.bufferMySQL_DB === name_database) && (_this.buffer_main_tables.log === name_table)) {
+                        _this.buffer_log_table_information = data;
+                        _this.stage_controller();
+                        return false;
+                    } else if ((_this.bufferMySQL_DB === name_database) && (_this.buffer_main_tables.regions === name_table)) {
                         _this.buffer_region_table_information = data;
                         _this.stage_controller();
                         return false;
