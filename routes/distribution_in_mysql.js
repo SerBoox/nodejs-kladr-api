@@ -472,7 +472,7 @@ router.get('/distribution', function (req, res, next) {
                 return this.distribution_region();
             }
 
-            //return this.close_connection();
+            return this.close_connection();
         };
 
         Distribution.prototype.select_all = function (name_database, name_table) {
@@ -516,7 +516,7 @@ router.get('/distribution', function (req, res, next) {
 
         Distribution.prototype.delete_all_tables_stage_0 = function () {
             var key, keyBuffer, arrayLength, i;
-            console.log('delete_all_tables_stage_0:','Внимание! Запущенна очистка всех лишних таблиц!');
+            console.log('delete_all_tables_stage_0:', 'Внимание! Запущенна очистка всех лишних таблиц!');
             arrayLength = this.bufferMySQL_Tables.length;
             for (keyBuffer in  this.bufferMySQL_Tables[0]) key = keyBuffer;
             for (i = 0; i < arrayLength; i++) {
@@ -530,155 +530,157 @@ router.get('/distribution', function (req, res, next) {
                     default:
                         this.drop_table(this.bufferMySQL_DB, this.bufferMySQL_Tables[i][key]);
                 }
-                if(i == (arrayLength - 1)){
+                if (i == (arrayLength - 1)) {
                     this.stage++;
                     this.stage_controller();
                 }
             }
         };
 
-        Distribution.prototype.distribution_region = function (start_row, finish_row, event) {
+        Distribution.prototype.distribution_region = function (start_row, finish_row) {
             //DISTRIBUTION REGION
+            var row = 0, first_row = 0, end_row = 0;
             console.log('ACTIVATE DISTRIBUTION_REGION', 'STAGE:', this.stage);
-            var data, dataLength = 0, row = 0, first_row = 0 ,row_now = 0, end_row = 0, limit = 0, i = 0;
             //Получаем общее колличество строк в запросе
-            if (event !== 'recursion') {
-                connection.query("SELECT COUNT(*) " +
-                    "FROM  ??.??" +
-                    "WHERE (" +
-                    "`socr` =  'Респ'" +
-                    "OR  `socr` =  'край'" +
-                    "OR  `socr` =  'обл'" +
-                    "OR  `socr` =  'АО'" +
-                    "OR  `socr` =  'Аобл')" +
-                    "AND  `code` LIKE  '%0000000000%'" +
-                    "ORDER BY  `code` ASC",
-                    [this.DBF_MySQL_DB, this.dbf_tables.kladr],
-                    function (error, result) {
-                        if (error !== null) {
-                            console.log("MySQL SELECT REGION Error: " + error);
-                        } else {
-                            row = result[0]['COUNT(*)'];
-                            eventEmitter.emit('cleaner_region_table');
-                        }
-                    });
-            }
-
-            eventEmitter.once('cleaner_region_table', (function (_this) {
-                return function () {
-                    connection.query('TRUNCATE TABLE  ??.??',
-                        [_this.bufferMySQL_DB, _this.buffer_main_tables.regions],
-                        function (error, result) {
-                            if (error !== null) {
-                                console.log("MySQL Clear region Table Error: " + error);
-                            } else {
-                                console.log('distribution_region:', 'Очистка таблицы прошла успешно:', _this.bufferMySQL_DB, _this.buffer_main_tables.regions);
-                                eventEmitter.emit('get_region_count')
-                            }
-                        }
-                    );
-                }
-            })(this));
+            connection.query("SELECT COUNT(*) " +
+                "FROM  ??.??" +
+                "WHERE (" +
+                "`socr` =  'Респ'" +
+                "OR  `socr` =  'край'" +
+                "OR  `socr` =  'обл'" +
+                "OR  `socr` =  'АО'" +
+                "OR  `socr` =  'Аобл')" +
+                "AND  `code` LIKE  '%0000000000%'" +
+                "ORDER BY  `code` ASC",
+                [this.DBF_MySQL_DB, this.dbf_tables.kladr],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL SELECT REGION Error: " + error);
+                    } else {
+                        row = result[0]['COUNT(*)'];
+                        eventEmitter.emit('get_region_count');
+                    }
+                });
 
             eventEmitter.once('get_region_count', (function (_this) {
                 return function () {
                     console.log('distribution_region:', 'В таблице строк', _this.DBF_MySQL_DB, _this.dbf_tables.kladr, row);
                     if ((start_row !== undefined) && (start_row < row) && (start_row !== finish_row)) {
                         if ((finish_row !== undefined) && (finish_row <= row)) {
-                            first_row = row_now = start_row;
+                            first_row = start_row;
                             end_row = finish_row;
-                            eventEmitter.emit('get_region');
                         } else {
-                            first_row = row_now = start_row;
+                            first_row = start_row;
                             end_row = row;
-                            eventEmitter.emit('get_region');
                         }
                     } else {
-                        first_row = row_now = 0;
+                        first_row = 0;
                         end_row = row;
-                        eventEmitter.emit('get_region');
                     }
+                    _this.truncate_table(_this.bufferMySQL_DB, _this.buffer_main_tables.regions, first_row, end_row);
                 }
             })(this));
 
-            eventEmitter.once('get_region', (function (_this) {
+        };
+
+        Distribution.prototype.truncate_table = function (name_database, name_table, start_row, finish_row) {
+            //Truncate DATABASES
+            connection.query('TRUNCATE TABLE  ??.??',
+                [this.bufferMySQL_DB, this.buffer_main_tables.regions],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL Truncate Table Error: " + error);
+                    } else {
+                        eventEmitter.emit('truncate_table')
+                    }
+                }
+            );
+
+            eventEmitter.once('truncate_table', (function (_this) {
                 return function () {
-                    //Нужно посчитать LIMIT для текущего захода
-                    if ((end_row - row_now) <= _this.query_limit) {
-                        limit = (end_row - row_now);
-                        console.log('distribution_region:', 'Запрашиваю все строки:', limit);
-                    } else if (((end_row - row_now) > _this.query_limit) && ((end_row - row_now) <= (_this.query_limit + _this.query_limit_error))) {
-                        limit = (end_row - row_now);
-                        console.log('distribution_region:', 'Запрашиваю строки c превышением лимита:', limit);
-                    } else if ((end_row - row_now) > (_this.query_limit + _this.query_limit_error)) {
-                        limit = _this.query_limit;
-                        console.log('distribution_region:', 'Запрашиваю строки упершись в лимит:', limit);
-                    }
-                    connection.query("SELECT * " +
-                        "FROM  ??.?? " +
-                        "WHERE ( " +
-                        "`socr` =  'Респ' " +
-                        "OR  `socr` =  'край' " +
-                        "OR  `socr` =  'обл' " +
-                        "OR  `socr` =  'АО' " +
-                        "OR  `socr` =  'Аобл') " +
-                        "AND  `code` LIKE  '%0000000000%' " +
-                        "ORDER BY  `code` ASC " +
-                        "LIMIT ? , ?; ",
-                        [_this.DBF_MySQL_DB, _this.dbf_tables.kladr, row_now, limit],
-                        function (error, result) {
-                            if (error !== null) {
-                                console.log("MySQL SELECT * region Error: " + error);
-                            } else {
-                                data = result;
-                                dataLength = result.length;
-                                //console.log(result[0]);
-                                //console.log(result.length);
-                                eventEmitter.emit('distribution_region');
-                            }
-                        });
-                }
-            })(this));
-
-            eventEmitter.once('distribution_region', (function (_this) {
-                return function () {
-                    for (i = 0; i < dataLength; i++) {
-                        connection.query("INSERT INTO ??.?? " +
-                            "(`id`,`dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, " +
-                            "`uno`, `ocatd`, `status`) " +
-                            "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-                            [_this.bufferMySQL_DB, _this.buffer_main_tables.regions, data[i].id, data[i].code.slice(0, 3),
-                                data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb,
-                                data[i].uno, data[i].ocatd, data[i].status],
-                            function (error, result) {
-                                if (error !== null) {
-                                    console.log("MySQL INSERT regions Error: " + error);
-                                } else {
-                                    row_now++;
-                                    console.log('distribution_region:', 'Запись строки прошла успешно строка:', row_now);
-                                    if ((first_row + limit) == result.insertId) {
-                                        eventEmitter.emit('next_get_region_iteration');
-                                    }
-                                }
-                            });
+                    console.log('truncate_table:', 'Очистка таблицы прошла успешно:', _this.bufferMySQL_DB, _this.buffer_main_tables.regions);
+                    if ((name_database == _this.bufferMySQL_DB) && (name_table == _this.buffer_main_tables.regions)) {
+                        _this.get_region_information(start_row, finish_row);
                     }
                 }
             })(this));
+        };
 
-            if (event === 'recursion') {
-                console.log('distribution_region:', 'Рекурсивный запрос прошел успешно', start_row, finish_row);
-                first_row = row_now = start_row;
-                end_row = finish_row;
-                eventEmitter.emit('get_region');
+        Distribution.prototype.get_region_information = function (start_row, finish_row) {
+            var data, dataLength, row_now = start_row, end_row = finish_row, limit = 0;
+
+            //Определяем LIMIT для текущего захода
+            if ((end_row - row_now) <= this.query_limit) {
+                limit = (end_row - row_now);
+                console.log('get_region_information:', 'Запрашиваю все строки:', limit);
+            } else if (((end_row - row_now) > this.query_limit) && ((end_row - row_now) <= (this.query_limit + this.query_limit_error))) {
+                limit = (end_row - row_now);
+                console.log('get_region_information:', 'Запрашиваю строки c превышением лимита:', limit);
+            } else if ((end_row - row_now) > (this.query_limit + this.query_limit_error)) {
+                limit = this.query_limit;
+                console.log('get_region_information:', 'Запрашиваю строки упершись в лимит:', limit);
             }
 
-            eventEmitter.once('next_get_region_iteration', (function (_this) {
+            connection.query("SELECT * " +
+                "FROM  ??.?? " +
+                "WHERE ( " +
+                "`socr` =  'Респ' " +
+                "OR  `socr` =  'край' " +
+                "OR  `socr` =  'обл' " +
+                "OR  `socr` =  'АО' " +
+                "OR  `socr` =  'Аобл') " +
+                "AND  `code` LIKE  '%0000000000%' " +
+                "ORDER BY  `code` ASC " +
+                "LIMIT ? , ?; ",
+                [this.DBF_MySQL_DB, this.dbf_tables.kladr, row_now, limit],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL SELECT * region Error: " + error);
+                    } else {
+                        data = result;
+                        dataLength = result.length;
+                        eventEmitter.emit('get_region_information');
+                    }
+                });
+            eventEmitter.once('get_region_information', (function (_this) {
+                return function () {
+                    _this.record_region_information(data, dataLength, row_now, end_row);
+                }
+            })(this));
+        };
+
+        Distribution.prototype.record_region_information = function (data, dataLength, row_now, end_row) {
+
+            var first_row = row_now;
+            //Записываем данные при помощи цикла
+            for (i = 0; i < dataLength; i++) {
+                connection.query("INSERT INTO ??.?? " +
+                    "(`id`,`dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, " +
+                    "`uno`, `ocatd`, `status`) " +
+                    "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+                    [this.bufferMySQL_DB, this.buffer_main_tables.regions, data[i].id, data[i].code.slice(0, 3),
+                        data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb,
+                        data[i].uno, data[i].ocatd, data[i].status],
+                    function (error, result) {
+                        if (error !== null) {
+                            console.log("MySQL INSERT regions Error: " + error);
+                        } else {
+                            row_now++;
+                            console.log('record_region_information:', 'Запись строки прошла успешно строка:', row_now);
+                            if ((first_row + dataLength) == result.insertId) {
+                                eventEmitter.emit('record_region_information');
+                            }
+                        }
+                    });
+            }
+
+            eventEmitter.once('record_region_information', (function (_this) {
                 return function () {
                     if (row_now < end_row) {
-                        console.log('distribution_region:', 'Произвожу рекурсивный запрос', row_now, end_row);
-                        //_this.distribution_region(row_now, end_row, 'recursion');
+                        console.log('record_region_information:', 'Произвожу рекурсивный запрос', row_now, end_row);
+                        _this.get_region_information(row_now, end_row);
                     } else {
-                        console.log('distribution_region:', 'Запись произведена успешно', row_now, end_row);
+                        console.log('record_region_information:', 'Запись произведена успешно', row_now, end_row);
                         _this.stage++;
                         _this.stage_controller();
                     }
@@ -741,5 +743,6 @@ router.get('/distribution', function (req, res, next) {
     test.open_connection();
 
     res.send('Иди смотри)');
-});
+})
+;
 module.exports = router;
