@@ -17,41 +17,6 @@ router.get('/test', function (req, res, next) {
         var date_time = dateFormat(now, "yyyy-mm-dd HH:MM:ss");
         var MySQLDate = '2016-01-02 13:32:27';
 
-        var multy_record_query = "INSERT INTO `kladr_buffer`.`aa_regions` " +
-            "(`id`, `dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`) " +
-            "VALUES (NULL, '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'), (NULL, '1', '2', '3', '4', '5', '6', '7', '8', '9', '10');";
-
-        //Получаем единую строку запроса
-        var query_body = "INSERT INTO ??.?? (`id`,`dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, " +
-            "`uno`, `ocatd`, `status`) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        var query_tail = "(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        var query = '', i;
-        const row = 2;
-        if (row === 1)
-            query += query_body + ";";
-        else {
-            for (i = 0; i < row; i++) {
-                if (i === 0) {
-                    query += query_body;
-                } else if ((row - 1) === i) {
-                    query = query + ', ' + query_tail + ';';
-                } else {
-                    query = query + ', ' + query_tail;
-                }
-            }
-        }
-        //Получаем единый массив запроса
-        var main_array = ['db_name', 'table_name'];
-        var tail_array = [1, 2, 3], query_values = [];
-        console.log(i, '<', row);
-        for (i = 0; i < row; i++) {
-            if (i === 0)
-                query_values = main_array.concat(tail_array);
-            else
-                query_values = query_values.concat(tail_array);
-        }
-        console.log(query_values);
-
         res.send('Иди смотри)');
     }
 );
@@ -94,7 +59,7 @@ router.get('/distribution', function (req, res, next) {
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
             this.start_stage = 0;
-            this.stage = 0;
+            this.stage = 2;
             this.finish_stage = 0;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
@@ -112,6 +77,9 @@ router.get('/distribution', function (req, res, next) {
             this.row = 0;
             this.query_limit = 25000;
             this.query_limit_error = 5000;
+            this.city_prefix = 'city_';
+            this.street_prefix = 'street_';
+            this.doma_prefix = 'doma_';
         }
 
 
@@ -484,18 +452,23 @@ router.get('/distribution', function (req, res, next) {
                 return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.socrbase);
             else if (this.buffer_region_table_information == undefined)
                 return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
-
+            //Выполняем основные стадии процесса
             if (this.stage === 0) {
                 //Чистим таблицу с логами
                 this.truncate_table(this.buffer_main_tables.log);
                 //Удаляем все лишние таблицы
                 return this.delete_all_tables_stage_0();
-            }
-
-            if (this.stage === 1) {
+            } else if (this.stage === 1) {
                 //Перенос данных по регионам
                 return this.distribution_region();
+            } else if (this.stage === 2) {
+                //По необходимости обновлям информацию
+                if (this.buffer_region_table_information.length < 1)
+                    this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+                //Создание таблиц для городов,деревень и.т.д
+                return this.create_all_city_tables();
             }
+
             return this.close_connection();
         };
 
@@ -728,7 +701,7 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
-        Distribution.prototype.record_region_information_container = function (data, dataLength, row_now, end_row) {
+        Distribution.prototype.record_region_information_container = function () {
             //Получаем единую строку запроса
             var first_row = row_now;
             var query_body = "INSERT INTO ??.?? (`id`,`dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, " +
@@ -770,7 +743,7 @@ router.get('/distribution', function (req, res, next) {
                         console.log("MySQL INSERT regions Error: " + error);
                     } else {
                         row_now = row_now + dataLength;
-                        console.log('record_region_information:', 'всего/записанно/контейнером :', end_row,row_now,dataLength);
+                        console.log('record_region_information:', 'всего/записанно/контейнером :', end_row, row_now, dataLength);
                         eventEmitter.emit('record_region_information');
                     }
                 });
@@ -786,6 +759,52 @@ router.get('/distribution', function (req, res, next) {
                         _this.stage++;
                         _this.stage_controller();
                     }
+                }
+            })(this));
+        };
+
+        Distribution.prototype.create_all_city_tables = function () {
+            //CREATE ALL CITY TABLES
+            var i, j = 0, bufferMySQL_DB = this.bufferMySQL_DB, table_name, number;
+            var data = this.buffer_region_table_information;
+            var dataLength = this.buffer_region_table_information.length;
+            //Создаю все таблицы для городов при помощи цикла
+            for (i = 0; i < dataLength; i++) {
+                table_name = this.city_prefix + data[i].number;
+                connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
+                    "`id` int(11) NOT NULL AUTO_INCREMENT," +
+                    "`dbf_id` varchar(11) NOT NULL DEFAULT ''," +
+                    "`number` varchar(5) NOT NULL DEFAULT ''," +
+                    "`name` varchar(80) NOT NULL DEFAULT ''," +
+                    "`socr` varchar(20) NOT NULL DEFAULT ''," +
+                    "`code` varchar(25) NOT NULL DEFAULT ''," +
+                    "`index` varchar(16) NOT NULL DEFAULT ''," +
+                    "`gninmb` varchar(14) NOT NULL DEFAULT ''," +
+                    "`uno` varchar(14) NOT NULL DEFAULT ''," +
+                    "`ocatd` varchar(21) NOT NULL DEFAULT ''," +
+                    "`status` varchar(11) NOT NULL DEFAULT ''," +
+                    "PRIMARY KEY (`id`)" +
+                    ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
+                    [this.bufferMySQL_DB, table_name],
+                    function (error, result) {
+                        if (error !== null) {
+                            console.log("MySQL CREATE TABLE Error: " + error);
+                        } else {
+                            j++;
+                            if ((dataLength - 1) == j) {
+                                eventEmitter.emit('create_all_city_tables');
+                            }
+                        }
+                    });
+            }
+
+            eventEmitter.once('create_all_city_tables', (function (_this) {
+                return function () {
+                    console.log('create_all_city_tables:', 'Внимание! Под города созданно новых таблиц:', dataLength);
+                    console.log('create_all_city_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
+                    _this.stage++;
+                    _this.show_tables(_this.bufferMySQL_DB, 'create_all_city_tables'); //Обновляю данные по таблицам
+                    _this.stage_controller();
                 }
             })(this));
         };
