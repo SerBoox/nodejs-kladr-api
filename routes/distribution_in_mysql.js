@@ -14,11 +14,8 @@ var isNum = require('isNum');
 
 router.get('/test', function (req, res, next) {
 
-
-        var date = dateFormat(now, "yyyy-mm-dd HH:MM:ss");
-        console.log(date);
+        var date_time = dateFormat(now, "yyyy-mm-dd HH:MM:ss");
         var MySQLDate = '2016-01-02 13:32:27';
-
 
         var multy_record_query = "INSERT INTO `kladr_buffer`.`aa_regions` " +
             "(`id`, `dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`) " +

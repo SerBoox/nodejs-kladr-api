@@ -11,6 +11,9 @@ var getMySQLObject = require('../controllers/getMySQLObject.js');
 var async = require('async');
 var Promise = require('promise');
 
+var dateFormat = require('dateformat');
+var now = new Date();
+
 var dbfParser;
 var cluster = require('cluster');
 var numCPUs = require('os').cpus().length;
@@ -234,7 +237,8 @@ function recordInMySQLTable(mysql_table, data, recordsCount, dbfParser, callback
 }
 
 eventEmitter.on('record_time_log_table', function (connection, event, mysql_table, recordsCount) {
-    connection.query("INSERT INTO `aa_record_time_log` (`id`,`event`,`table_name`,`rows`,`date_time`) VALUES ( NULL , ? , ? , ? , NOW( ))", [event, mysql_table, recordsCount],
+    var date_time = dateFormat(now, "yyyy-mm-dd HH:MM:ss");
+    connection.query("INSERT INTO `aa_record_time_log` (`id`,`event`,`table_name`,`rows`,`date_time`) VALUES ( NULL , ? , ? , ? , ?)", [event, mysql_table, recordsCount, date_time],
         function (error) {
             if (error !== null) {
                 console.log("MySQL `record_time_log` Table Error: " + error);
