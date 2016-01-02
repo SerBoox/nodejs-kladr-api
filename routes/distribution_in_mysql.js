@@ -413,7 +413,7 @@ router.get('/distribution', function (req, res, next) {
             //CREATE REGION TABLE
             connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
                 "`id` int(11) NOT NULL AUTO_INCREMENT," +
-                "`dbf_id` varchar(11) NOT NULL DEFAULT ''," +
+                "`dbf_id` int(11) NOT NULL," +
                 "`number` varchar(5) NOT NULL DEFAULT ''," +
                 "`name` varchar(80) NOT NULL DEFAULT ''," +
                 "`socr` varchar(20) NOT NULL DEFAULT ''," +
@@ -423,7 +423,8 @@ router.get('/distribution', function (req, res, next) {
                 "`uno` varchar(14) NOT NULL DEFAULT ''," +
                 "`ocatd` varchar(21) NOT NULL DEFAULT ''," +
                 "`status` varchar(11) NOT NULL DEFAULT ''," +
-                "PRIMARY KEY (`id`)" +
+                "PRIMARY KEY (`id`)," +
+                "KEY `dbf_id` (`dbf_id`)"+
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
                 [this.bufferMySQL_DB, this.buffer_main_tables.regions],
                 function (error, result) {
@@ -770,7 +771,7 @@ router.get('/distribution', function (req, res, next) {
 
         Distribution.prototype.create_all_city_tables = function () {
             //CREATE ALL CITY TABLES
-            var i, j = 0, bufferMySQL_DB = this.bufferMySQL_DB, table_name, number;
+            var i, j = 0, table_name;
             var data = this.buffer_region_table_information;
             var dataLength = this.buffer_region_table_information.length;
             //Создаю все таблицы для городов при помощи цикла
@@ -779,8 +780,7 @@ router.get('/distribution', function (req, res, next) {
                 table_name = data[i].number + this.city_prefix;
                 connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
                     "`id` int(11) NOT NULL AUTO_INCREMENT," +
-                    "`dbf_id` varchar(11) NOT NULL DEFAULT ''," +
-                    "`number` varchar(5) NOT NULL DEFAULT ''," +
+                    "`dbf_id` int(11) NOT NULL," +
                     "`name` varchar(80) NOT NULL DEFAULT ''," +
                     "`socr` varchar(20) NOT NULL DEFAULT ''," +
                     "`code` varchar(25) NOT NULL DEFAULT ''," +
@@ -789,7 +789,8 @@ router.get('/distribution', function (req, res, next) {
                     "`uno` varchar(14) NOT NULL DEFAULT ''," +
                     "`ocatd` varchar(21) NOT NULL DEFAULT ''," +
                     "`status` varchar(11) NOT NULL DEFAULT ''," +
-                    "PRIMARY KEY (`id`)" +
+                    "PRIMARY KEY (`id`)," +
+                    "KEY `dbf_id` (`dbf_id`)"+
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
                     [this.bufferMySQL_DB, table_name],
                     function (error, result) {
