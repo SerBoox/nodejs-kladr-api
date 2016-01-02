@@ -10,11 +10,12 @@ var async = require('async');
 var Promise = require('promise');
 var dateFormat = require('dateformat');
 var now = new Date();
+var isNum = require('isNum');
 
 router.get('/test', function (req, res, next) {
 
 
-        var date = dateFormat(now, "yyyy-MM-dd HH:MM:ss");
+        var date = dateFormat(now, "yyyy-mm-dd HH:MM:ss");
         console.log(date);
         var MySQLDate = '2016-01-02 13:32:27';
 
@@ -477,6 +478,8 @@ router.get('/distribution', function (req, res, next) {
                 return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
 
             if (this.stage === 0) {
+                //Чистим таблицу с логами
+                this.truncate_table(this.buffer_main_tables.log);
                 //Удаляем все лишние таблицы
                 return this.delete_all_tables_stage_0();
             }
@@ -485,7 +488,6 @@ router.get('/distribution', function (req, res, next) {
                 //Перенос данных по регионам
                 return this.distribution_region();
             }
-
             return this.close_connection();
         };
 
@@ -551,20 +553,16 @@ router.get('/distribution', function (req, res, next) {
             }
         };
 
-        Distribution.prototype.record_in_log = function (dbf_table_name, table_name, rows, end_row) {
-
+        Distribution.prototype.record_in_log = function (event,dbf_table_name, table_name, rows) {
+            var date_time = dateFormat(now, "yyyy-mm-dd HH:MM:ss");
             //Записываем данные в лог
             connection.query("INSERT INTO ??.?? " +
                 "(`id`, `event_id`, `event`, `dbf_table_name`, `table_name`, `rows`, `date_time`) " +
-                "VALUES (NULL, '?', '?', '?', '?', '?', NOW());",
-                [this.bufferMySQL_DB, this.buffer_main_tables.log, this.stage, data[i].code.slice(0, 3),
-                    data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb,
-                    data[i].uno, data[i].ocatd, data[i].status],
+                "VALUES (NULL, ?, ?, ?, ?, ?, ?);",
+                [this.bufferMySQL_DB,this.buffer_main_tables.log,this.stage,event,dbf_table_name,table_name,rows,date_time],
                 function (error, result) {
                     if (error !== null) {
-                        console.log("MySQL INSERT regions Error: " + error);
-                    } else {
-
+                        console.log("MySQL INSERT log Error: " + error);
                     }
                 });
         };
@@ -609,16 +607,17 @@ router.get('/distribution', function (req, res, next) {
                         first_row = 0;
                         end_row = row;
                     }
-                    _this.truncate_table(_this.bufferMySQL_DB, _this.buffer_main_tables.regions, first_row, end_row);
+                    _this.record_in_log('start',_this.dbf_tables.kladr,_this.buffer_main_tables.regions,end_row);
+                    _this.truncate_table(_this.buffer_main_tables.regions, first_row, end_row);
                 }
             })(this));
 
         };
 
-        Distribution.prototype.truncate_table = function (name_database, name_table, start_row, finish_row) {
+        Distribution.prototype.truncate_table = function (name_table, start_row, finish_row) {
             //Truncate DATABASES
             connection.query('TRUNCATE TABLE  ??.??',
-                [this.bufferMySQL_DB, this.buffer_main_tables.regions],
+                [this.bufferMySQL_DB, name_table],
                 function (error, result) {
                     if (error !== null) {
                         console.log("MySQL Truncate Table Error: " + error);
@@ -631,7 +630,7 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('truncate_table', (function (_this) {
                 return function () {
                     console.log('truncate_table:', 'Очистка таблицы прошла успешно:', _this.bufferMySQL_DB, _this.buffer_main_tables.regions);
-                    if ((name_database == _this.bufferMySQL_DB) && (name_table == _this.buffer_main_tables.regions)) {
+                    if (name_table == _this.buffer_main_tables.regions) {
                         _this.get_region_information(start_row, finish_row);
                     }
                 }
@@ -712,6 +711,7 @@ router.get('/distribution', function (req, res, next) {
                         console.log('record_region_information:', 'Произвожу рекурсивный запрос', row_now, end_row);
                         _this.get_region_information(row_now, end_row);
                     } else {
+                        _this.record_in_log('finish',_this.dbf_tables.kladr,_this.buffer_main_tables.regions,end_row);
                         console.log('record_region_information:', 'Запись произведена успешно', row_now, end_row);
                         _this.stage++;
                         _this.stage_controller();
