@@ -21,29 +21,40 @@ router.get('/test', function (req, res, next) {
             "(`id`, `dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`) " +
             "VALUES (NULL, '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'), (NULL, '1', '2', '3', '4', '5', '6', '7', '8', '9', '10');";
 
-        var query_body = "INSERT INTO ??.?? " +
-            "(`id`,`dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, " +
-            "`uno`, `ocatd`, `status`) " +
-            "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
+        //Получаем единую строку запроса
+        var query_body = "INSERT INTO ??.?? (`id`,`dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, " +
+            "`uno`, `ocatd`, `status`) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         var query_tail = "(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-        var row = 10, query = '';
-        for (i = 0; i < row; i++) {
-            if (row === 1) {
-                return query += query_body + ";";
-            } else if (i === 0) {
-                query += query_body;
-            } else if (row-- === i) {
-                return query = query + ', ' + query_tail + ';';
-            } else {
-                query = query + ', ' + query_tail;
+        var query = '', i;
+        const row = 2;
+        if (row === 1)
+            query += query_body + ";";
+        else {
+            for (i = 0; i < row; i++) {
+                if (i === 0) {
+                    query += query_body;
+                } else if ((row - 1) === i) {
+                    query = query + ', ' + query_tail + ';';
+                } else {
+                    query = query + ', ' + query_tail;
+                }
             }
         }
+        //Получаем единый массив запроса
+        var main_array = ['db_name', 'table_name'];
+        var tail_array = [1, 2, 3], query_values = [];
+        console.log(i, '<', row);
+        for (i = 0; i < row; i++) {
+            if (i === 0)
+                query_values = main_array.concat(tail_array);
+            else
+                query_values = query_values.concat(tail_array);
+        }
+        console.log(query_values);
 
         res.send('Иди смотри)');
     }
-)
+);
 
 
 router.get('/distribution', function (req, res, next) {
@@ -99,8 +110,8 @@ router.get('/distribution', function (req, res, next) {
                 regions: 'aa_regions'
             };
             this.row = 0;
-            this.query_limit = 20;
-            this.query_limit_error = 30;
+            this.query_limit = 25000;
+            this.query_limit_error = 5000;
         }
 
 
@@ -550,13 +561,13 @@ router.get('/distribution', function (req, res, next) {
             }
         };
 
-        Distribution.prototype.record_in_log = function (event,dbf_table_name, table_name, rows) {
+        Distribution.prototype.record_in_log = function (event, dbf_table_name, table_name, rows) {
             var date_time = dateFormat(now, "yyyy-mm-dd HH:MM:ss");
             //Записываем данные в лог
             connection.query("INSERT INTO ??.?? " +
                 "(`id`, `event_id`, `event`, `dbf_table_name`, `table_name`, `rows`, `date_time`) " +
                 "VALUES (NULL, ?, ?, ?, ?, ?, ?);",
-                [this.bufferMySQL_DB,this.buffer_main_tables.log,this.stage,event,dbf_table_name,table_name,rows,date_time],
+                [this.bufferMySQL_DB, this.buffer_main_tables.log, this.stage, event, dbf_table_name, table_name, rows, date_time],
                 function (error, result) {
                     if (error !== null) {
                         console.log("MySQL INSERT log Error: " + error);
@@ -604,7 +615,7 @@ router.get('/distribution', function (req, res, next) {
                         first_row = 0;
                         end_row = row;
                     }
-                    _this.record_in_log('start',_this.dbf_tables.kladr,_this.buffer_main_tables.regions,end_row);
+                    _this.record_in_log('start', _this.dbf_tables.kladr, _this.buffer_main_tables.regions, end_row);
                     _this.truncate_table(_this.buffer_main_tables.regions, first_row, end_row);
                 }
             })(this));
@@ -672,7 +683,7 @@ router.get('/distribution', function (req, res, next) {
                 });
             eventEmitter.once('get_region_information', (function (_this) {
                 return function () {
-                    _this.record_region_information(data, dataLength, row_now, end_row);
+                    _this.record_region_information_container(data, dataLength, row_now, end_row);
                 }
             })(this));
         };
@@ -708,7 +719,69 @@ router.get('/distribution', function (req, res, next) {
                         console.log('record_region_information:', 'Произвожу рекурсивный запрос', row_now, end_row);
                         _this.get_region_information(row_now, end_row);
                     } else {
-                        _this.record_in_log('finish',_this.dbf_tables.kladr,_this.buffer_main_tables.regions,end_row);
+                        _this.record_in_log('finish', _this.dbf_tables.kladr, _this.buffer_main_tables.regions, end_row);
+                        console.log('record_region_information:', 'Запись произведена успешно', row_now, end_row);
+                        _this.stage++;
+                        _this.stage_controller();
+                    }
+                }
+            })(this));
+        };
+
+        Distribution.prototype.record_region_information_container = function (data, dataLength, row_now, end_row) {
+            //Получаем единую строку запроса
+            var first_row = row_now;
+            var query_body = "INSERT INTO ??.?? (`id`,`dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, " +
+                "`uno`, `ocatd`, `status`) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query_tail = "(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query = '', i;
+            if (dataLength === 1)
+                query += query_body + ";";
+            else {
+                for (i = 0; i < dataLength; i++) {
+                    if (i === 0) {
+                        query += query_body;
+                    } else if ((dataLength - 1) === i) {
+                        query = query + ', ' + query_tail + ';';
+                    } else {
+                        query = query + ', ' + query_tail;
+                    }
+                }
+            }
+            //Получаем единый массив запроса
+            var main_array = [this.bufferMySQL_DB, this.buffer_main_tables.regions];
+            var tail_array = [];
+            var query_values = [];
+            for (i = 0; i < dataLength; i++) {
+                if (i === 0)
+                    query_values = main_array.concat(data[i].id, data[i].code.slice(0, 3),
+                        data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb,
+                        data[i].uno, data[i].ocatd, data[i].status);
+                else
+                    query_values = query_values.concat(data[i].id, data[i].code.slice(0, 3),
+                        data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb,
+                        data[i].uno, data[i].ocatd, data[i].status);
+            }
+
+            //Записываем данные единым запросом
+            connection.query(query, query_values,
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL INSERT regions Error: " + error);
+                    } else {
+                        row_now = row_now + dataLength;
+                        console.log('record_region_information:', 'всего/записанно/контейнером :', end_row,row_now,dataLength);
+                        eventEmitter.emit('record_region_information');
+                    }
+                });
+
+            eventEmitter.once('record_region_information', (function (_this) {
+                return function () {
+                    if (row_now < end_row) {
+                        console.log('record_region_information:', 'Произвожу рекурсивный запрос', row_now, end_row);
+                        _this.get_region_information(row_now, end_row);
+                    } else {
+                        _this.record_in_log('finish', _this.dbf_tables.kladr, _this.buffer_main_tables.regions, end_row);
                         console.log('record_region_information:', 'Запись произведена успешно', row_now, end_row);
                         _this.stage++;
                         _this.stage_controller();
