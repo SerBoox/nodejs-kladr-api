@@ -70,16 +70,17 @@ router.get('/distribution', function (req, res, next) {
                 doma: 'doma'
             };
             this.buffer_main_tables = {
-                log: 'aa_record_time_log',
-                socrbase: 'aa_socrbase',
-                regions: 'aa_regions'
+                log: '000_record_time_log',
+                socrbase: '000_socrbase',
+                regions: '000_regions'
             };
+            eventEmitter.setMaxListeners(50000);
             this.row = 0;
             this.query_limit = 25000;
             this.query_limit_error = 5000;
-            this.city_prefix = 'city_';
-            this.street_prefix = 'street_';
-            this.doma_prefix = 'doma_';
+            this.city_prefix = '_city';
+            this.street_prefix = '_street';
+            this.doma_prefix = '_doma';
         }
 
 
@@ -701,9 +702,8 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
-        Distribution.prototype.record_region_information_container = function () {
+        Distribution.prototype.record_region_information_container = function (data, dataLength, row_now, end_row) {
             //Получаем единую строку запроса
-            var first_row = row_now;
             var query_body = "INSERT INTO ??.?? (`id`,`dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, " +
                 "`uno`, `ocatd`, `status`) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             var query_tail = "(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -723,7 +723,6 @@ router.get('/distribution', function (req, res, next) {
             }
             //Получаем единый массив запроса
             var main_array = [this.bufferMySQL_DB, this.buffer_main_tables.regions];
-            var tail_array = [];
             var query_values = [];
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
@@ -769,8 +768,9 @@ router.get('/distribution', function (req, res, next) {
             var data = this.buffer_region_table_information;
             var dataLength = this.buffer_region_table_information.length;
             //Создаю все таблицы для городов при помощи цикла
+            this.record_in_log('start', this.dbf_tables.kladr, this.city_prefix, dataLength);
             for (i = 0; i < dataLength; i++) {
-                table_name = this.city_prefix + data[i].number;
+                table_name = data[i].number + this.city_prefix;
                 connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
                     "`id` int(11) NOT NULL AUTO_INCREMENT," +
                     "`dbf_id` varchar(11) NOT NULL DEFAULT ''," +
@@ -803,6 +803,7 @@ router.get('/distribution', function (req, res, next) {
                     console.log('create_all_city_tables:', 'Внимание! Под города созданно новых таблиц:', dataLength);
                     console.log('create_all_city_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
+                    _this.record_in_log('finish', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
                     _this.show_tables(_this.bufferMySQL_DB, 'create_all_city_tables'); //Обновляю данные по таблицам
                     _this.stage_controller();
                 }
