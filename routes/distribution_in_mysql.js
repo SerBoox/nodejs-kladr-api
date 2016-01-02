@@ -236,7 +236,7 @@ router.get('/distribution', function (req, res, next) {
                 return function () {
                     if (database === _this.DBF_MySQL_DB) {
                         _this.DBF_MySQL_Tables = (data.length > 0) ? data : [];
-                        console.log('show_tables:', 'В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event', event);
+                        console.log('show_tables:', 'В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event:', event);
                         if (dataLength === 7) console.log('show_tables:', 'Число ' + dataLength + ' соответствует необходимому значению числа таблиц!');
                         else console.log('show_tables:', 'Внимание! ' + dataLength + ' таблиц может быть недостаточно для полного распределения данных!');
                         if (event === 'update') {
@@ -245,7 +245,7 @@ router.get('/distribution', function (req, res, next) {
 
                     } else if (database === _this.bufferMySQL_DB) {
                         _this.bufferMySQL_Tables = (dataLength > 0) ? data : [];
-                        console.log('show_tables:', 'В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event', event);
+                        console.log('show_tables:', 'В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event:', event);
                         if (event === 'update') {
                             _this.validate_main_tables(_this.bufferMySQL_DB);
                         }
@@ -424,7 +424,7 @@ router.get('/distribution', function (req, res, next) {
                 "`ocatd` varchar(21) NOT NULL DEFAULT ''," +
                 "`status` varchar(11) NOT NULL DEFAULT ''," +
                 "PRIMARY KEY (`id`)," +
-                "KEY `dbf_id` (`dbf_id`)"+
+                "KEY `dbf_id` (`dbf_id`)" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
                 [this.bufferMySQL_DB, this.buffer_main_tables.regions],
                 function (error, result) {
@@ -469,12 +469,12 @@ router.get('/distribution', function (req, res, next) {
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Создание таблиц для городов,деревень и.т.д
                 return this.create_all_city_tables();
-            }else if (this.stage === 3) {
+            } else if (this.stage === 3) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
-                   return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
-                //Создание таблиц для городов,деревень и.т.д
-                //return this.create_all_street_tables();
+                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+                //Создание таблиц для улиц
+                return this.create_all_street_tables();
             }
 
             return this.close_connection();
@@ -790,7 +790,7 @@ router.get('/distribution', function (req, res, next) {
                     "`ocatd` varchar(21) NOT NULL DEFAULT ''," +
                     "`status` varchar(11) NOT NULL DEFAULT ''," +
                     "PRIMARY KEY (`id`)," +
-                    "KEY `dbf_id` (`dbf_id`)"+
+                    "KEY `dbf_id` (`dbf_id`)" +
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
                     [this.bufferMySQL_DB, table_name],
                     function (error, result) {
@@ -818,27 +818,30 @@ router.get('/distribution', function (req, res, next) {
         };
 
         Distribution.prototype.create_all_street_tables = function () {
-            //CREATE ALL CITY TABLES
-            var i, j = 0, bufferMySQL_DB = this.bufferMySQL_DB, table_name, number;
+            //CREATE ALL STREET TABLES
+            var i, j = 0, table_name;
             var data = this.buffer_region_table_information;
             var dataLength = this.buffer_region_table_information.length;
             //Создаю все таблицы для городов при помощи цикла
-            this.record_in_log('start', this.dbf_tables.kladr, this.city_prefix, dataLength);
+            this.record_in_log('start', this.dbf_tables.street, this.street_prefix, dataLength);
             for (i = 0; i < dataLength; i++) {
                 table_name = data[i].number + this.street_prefix;
                 connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
                     "`id` int(11) NOT NULL AUTO_INCREMENT," +
-                    "`dbf_id` varchar(11) NOT NULL DEFAULT ''," +
-                    "`number` varchar(5) NOT NULL DEFAULT ''," +
+                    "`dbf_id` int(11) NOT NULL," +
+                    "`region_id` int(11) NOT NULL," +
+                    "`city_id` int(11) NOT NULL," +
                     "`name` varchar(80) NOT NULL DEFAULT ''," +
                     "`socr` varchar(20) NOT NULL DEFAULT ''," +
-                    "`code` varchar(25) NOT NULL DEFAULT ''," +
+                    "`code` varchar(28) NOT NULL DEFAULT ''," +
                     "`index` varchar(16) NOT NULL DEFAULT ''," +
                     "`gninmb` varchar(14) NOT NULL DEFAULT ''," +
                     "`uno` varchar(14) NOT NULL DEFAULT ''," +
                     "`ocatd` varchar(21) NOT NULL DEFAULT ''," +
-                    "`status` varchar(11) NOT NULL DEFAULT ''," +
-                    "PRIMARY KEY (`id`)" +
+                    "PRIMARY KEY (`id`)," +
+                    "KEY `dbf_id` (`dbf_id`)," +
+                    "KEY `city_id` (`city_id`)," +
+                    "KEY `region_id` (`region_id`)" +
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
                     [this.bufferMySQL_DB, table_name],
                     function (error, result) {
@@ -847,19 +850,18 @@ router.get('/distribution', function (req, res, next) {
                         } else {
                             j++;
                             if ((dataLength - 1) == j) {
-                                eventEmitter.emit('create_all_city_tables');
+                                eventEmitter.emit('create_all_street_tables');
                             }
                         }
                     });
             }
-
-            eventEmitter.once('create_all_city_tables', (function (_this) {
+            eventEmitter.once('create_all_street_tables', (function (_this) {
                 return function () {
-                    console.log('create_all_city_tables:', 'Внимание! Под города созданно новых таблиц:', dataLength);
+                    console.log('create_all_city_tables:', 'Внимание! Под улицы созданно новых таблиц:', dataLength);
                     console.log('create_all_city_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
-                    _this.record_in_log('finish', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
-                    _this.show_tables(_this.bufferMySQL_DB, 'create_all_city_tables'); //Обновляю данные по таблицам
+                    _this.record_in_log('finish', _this.dbf_tables.street, _this.street_prefix, dataLength);
+                    _this.show_tables(_this.bufferMySQL_DB, 'create_all_street_tables'); //Обновляю данные по таблицам
                     _this.stage_controller();
                 }
             })(this));
