@@ -8,31 +8,45 @@ var parameters = require('../config/parameters.json');
 var getMySQLObject = require('../controllers/getMySQLObject.js');
 var async = require('async');
 var Promise = require('promise');
+var dateFormat = require('dateformat');
+var now = new Date();
 
 router.get('/test', function (req, res, next) {
-    var startDbRecordTime = new Date().getTime();
-    var i = 0;
 
-    /*var test = function(){
-     i++;
-     console.log('Иди смотри): ', i);
-     }; */
 
-    //eventEmitter.addListener('test', test);
-    eventEmitter.emit('test');
+        var date = dateFormat(now, "yyyy-MM-dd HH:MM:ss");
+        console.log(date);
+        var MySQLDate = '2016-01-02 13:32:27';
 
-    eventEmitter.once('test', (function () {
-        return function () {
-            i++;
-            console.log('Иди смотри): ', i);
+
+        var multy_record_query = "INSERT INTO `kladr_buffer`.`aa_regions` " +
+            "(`id`, `dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`) " +
+            "VALUES (NULL, '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'), (NULL, '1', '2', '3', '4', '5', '6', '7', '8', '9', '10');";
+
+        var query_body = "INSERT INTO ??.?? " +
+            "(`id`,`dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, " +
+            "`uno`, `ocatd`, `status`) " +
+            "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        var query_tail = "(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        var row = 10, query = '';
+        for (i = 0; i < row; i++) {
+            if (row === 1) {
+                return query += query_body + ";";
+            } else if (i === 0) {
+                query += query_body;
+            } else if (row-- === i) {
+                return query = query + ', ' + query_tail + ';';
+            } else {
+                query = query + ', ' + query_tail;
+            }
         }
-    })(res));
 
+        res.send('Иди смотри)');
+    }
+)
 
-    //eventEmitter.removeListener('test',test);
-
-    res.send('Иди смотри):');
-});
 
 router.get('/distribution', function (req, res, next) {
     var Distribution, connection,
@@ -535,6 +549,24 @@ router.get('/distribution', function (req, res, next) {
                     this.stage_controller();
                 }
             }
+        };
+
+        Distribution.prototype.record_in_log = function (dbf_table_name, table_name, rows, end_row) {
+
+            //Записываем данные в лог
+            connection.query("INSERT INTO ??.?? " +
+                "(`id`, `event_id`, `event`, `dbf_table_name`, `table_name`, `rows`, `date_time`) " +
+                "VALUES (NULL, '?', '?', '?', '?', '?', NOW());",
+                [this.bufferMySQL_DB, this.buffer_main_tables.log, this.stage, data[i].code.slice(0, 3),
+                    data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb,
+                    data[i].uno, data[i].ocatd, data[i].status],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL INSERT regions Error: " + error);
+                    } else {
+
+                    }
+                });
         };
 
         Distribution.prototype.distribution_region = function (start_row, finish_row) {
