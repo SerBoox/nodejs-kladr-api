@@ -58,7 +58,7 @@ router.get('/distribution', function (req, res, next) {
             this.dbf_log_table_information = undefined;
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
-            this.stage = 3;
+            this.stage = 0;
             this.finish_stage = 4;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
@@ -942,20 +942,36 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('distribution_all_city_tables', (function (_this) {
                 return function () {
                     console.log('distribution_all_city_tables:', 'В таблице строк', _this.DBF_MySQL_DB, _this.dbf_tables.kladr, row);
-                    if ((start_row !== undefined) && (start_row < row) && (start_row !== finish_row)) {
-                        if ((finish_row !== undefined) && (finish_row <= row)) {
-                            first_row = start_row;
-                            end_row = finish_row;
+                    if (row < 1) {
+                        first_key++;
+                        if(first_key < last_kay){
+                            console.log('distribution_all_city_tables:', 'Внимание! По запросу ничего не найденно! Запрашиваю города по следующему региону', region_number, first_key, last_kay, start_row, finish_row);
+                            _this.record_in_log('empty query', _this.dbf_tables.kladr, table_name, end_row);
+                            _this.distribution_all_city_tables(first_key, last_kay, start_row, finish_row);
+
+                        }else{
+                            console.log('distribution_all_city_tables:', 'Внимание! По последнему запросу ни найденно ни одной строки. Запись завершенна.', region_number ,first_key, last_kay, start_row, finish_row);
+                            _this.record_in_log('empty query', _this.dbf_tables.kladr, table_name, end_row);
+                            _this.record_in_log('finish record all city information container', _this.dbf_tables.kladr, _this.city_prefix, end_row);
+                            _this.stage++;
+                            _this.stage_controller();
+                        }
+                    } else{
+                        if ((start_row !== undefined) && (start_row < row) && (start_row !== finish_row)) {
+                            if ((finish_row !== undefined) && (finish_row <= row)) {
+                                first_row = start_row;
+                                end_row = finish_row;
+                            } else {
+                                first_row = start_row;
+                                end_row = row;
+                            }
                         } else {
-                            first_row = start_row;
+                            first_row = 0;
                             end_row = row;
                         }
-                    } else {
-                        first_row = 0;
-                        end_row = row;
+                        _this.record_in_log('start record city one region', _this.dbf_tables.kladr, table_name, end_row);
+                        _this.get_city_information(start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay);
                     }
-                    _this.record_in_log('start record city one region', _this.dbf_tables.kladr, table_name, end_row);
-                    _this.get_city_information(start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay);
                 }
             })(this));
         };
