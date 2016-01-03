@@ -58,7 +58,7 @@ router.get('/distribution', function (req, res, next) {
             this.dbf_log_table_information = undefined;
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
-            this.stage = 2;
+            this.stage = 0;
             this.finish_stage = 99;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
@@ -351,7 +351,7 @@ router.get('/distribution', function (req, res, next) {
             connection.query("CREATE TABLE IF NOT EXISTS ??.?? ( " +
                 "`id` int(11) NOT NULL AUTO_INCREMENT," +
                 "`event_id` int(11) NOT NULL, " +
-                "`event` varchar(35) NOT NULL DEFAULT ''," +
+                "`event` varchar(150) NOT NULL DEFAULT ''," +
                 "`dbf_table_name` varchar(35) NOT NULL DEFAULT ''," +
                 "`table_name` varchar(35) NOT NULL DEFAULT ''," +
                 "`rows` int(11) NOT NULL," +
@@ -453,9 +453,6 @@ router.get('/distribution', function (req, res, next) {
                 return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.socrbase);
             else if (this.buffer_region_table_information == undefined)
                 return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
-            //По необходимости обновлям информацию
-            if (this.buffer_region_table_information.length < 1)
-                return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
             //Выполняем основные стадии процесса
             if ((this.stage === 0) && (this.stage <= this.finish_stage)) {
                 //Чистим таблицу с логами
@@ -467,32 +464,59 @@ router.get('/distribution', function (req, res, next) {
                 return this.distribution_region();
                 //-----------------------------------------------------------//
             } else if ((this.stage === 2) && (this.stage <= this.finish_stage)) {
+                //По необходимости обновлям информацию
+                if (this.buffer_region_table_information.length < 1)
+                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Создание таблиц для городов,деревень и.т.д
                 return this.create_all_city_tables();
             } else if ((this.stage === 3) && (this.stage <= this.finish_stage)) {
+                //По необходимости обновлям информацию
+                if (this.buffer_region_table_information.length < 1)
+                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Очистка всего содержимого у таблиц городов,деревень и.т.д
                 return this.truncate_all_city_tables();
             } else if ((this.stage === 4) && (this.stage <= this.finish_stage)) {
+                //По необходимости обновлям информацию
+                if (this.buffer_region_table_information.length < 1)
+                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Перенос данных по городам, деревгям и.т.д.
                 return this.distribution_all_city_tables();
                 //-----------------------------------------------------------//
             } else if ((this.stage === 5) && (this.stage <= this.finish_stage)) {
+                //По необходимости обновлям информацию
+                if (this.buffer_region_table_information.length < 1)
+                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Создание таблиц для улиц
                 return this.create_all_street_tables();
             } else if ((this.stage === 6) && (this.stage <= this.finish_stage)) {
+                //По необходимости обновлям информацию
+                if (this.buffer_region_table_information.length < 1)
+                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Очистка всего содержимого у таблиц улиц
                 return this.truncate_all_street_tables();
             }else if ((this.stage === 7) && (this.stage <= this.finish_stage)) {
+                //По необходимости обновлям информацию
+                if (this.buffer_region_table_information.length < 1)
+                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Перенос данных по улицам
                 return this.distribution_all_street_tables();
                 //-----------------------------------------------------------//
             }else if ((this.stage === 8) && (this.stage <= this.finish_stage)) {
+                //По необходимости обновлям информацию
+                if (this.buffer_region_table_information.length < 1)
+                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Создание таблиц для домов
                 return this.create_all_home_tables();
             } else if ((this.stage === 9) && (this.stage <= this.finish_stage)) {
+                //По необходимости обновлям информацию
+                if (this.buffer_region_table_information.length < 1)
+                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Очистка всего содержимого у таблиц домов
                 return this.truncate_all_home_tables();
             }else if ((this.stage === 10) && (this.stage <= this.finish_stage)) {
+                //По необходимости обновлям информацию
+                if (this.buffer_region_table_information.length < 1)
+                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Перенос данных по домам
                 return this.distribution_all_home_tables();
             }
@@ -567,8 +591,8 @@ router.get('/distribution', function (req, res, next) {
             //Записываем данные в лог
             connection.query("INSERT INTO ??.?? " +
                 "(`id`, `event_id`, `event`, `dbf_table_name`, `table_name`, `rows`, `date_time`) " +
-                "VALUES (NULL, ?, ?, ?, ?, ?, ?);",
-                [this.bufferMySQL_DB, this.buffer_main_tables.log, this.stage, event, dbf_table_name, table_name, rows, date_time],
+                "VALUES (NULL, ?, ?, ?, ?, ?, NOW());",
+                [this.bufferMySQL_DB, this.buffer_main_tables.log, this.stage, event, dbf_table_name, table_name, rows],
                 function (error, result) {
                     if (error !== null) {
                         console.log("MySQL INSERT log Error: " + error);
@@ -616,7 +640,7 @@ router.get('/distribution', function (req, res, next) {
                         first_row = 0;
                         end_row = row;
                     }
-                    _this.record_in_log('start', _this.dbf_tables.kladr, _this.buffer_main_tables.regions, end_row);
+                    _this.record_in_log('start distribution region', _this.dbf_tables.kladr, _this.buffer_main_tables.regions, end_row);
                     _this.truncate_table(_this.buffer_main_tables.regions, first_row, end_row);
                 }
             })(this));
@@ -720,7 +744,7 @@ router.get('/distribution', function (req, res, next) {
                         console.log('record_region_information:', 'Произвожу рекурсивный запрос', row_now, end_row);
                         _this.get_region_information(row_now, end_row);
                     } else {
-                        _this.record_in_log('finish', _this.dbf_tables.kladr, _this.buffer_main_tables.regions, end_row);
+                        _this.record_in_log('finish record region information', _this.dbf_tables.kladr, _this.buffer_main_tables.regions, end_row);
                         console.log('record_region_information:', 'Запись произведена успешно', row_now, end_row);
                         _this.stage++;
                         _this.stage_controller();
@@ -780,7 +804,7 @@ router.get('/distribution', function (req, res, next) {
                         console.log('record_region_information:', 'Произвожу рекурсивный запрос', row_now, end_row);
                         _this.get_region_information(row_now, end_row);
                     } else {
-                        _this.record_in_log('finish', _this.dbf_tables.kladr, _this.buffer_main_tables.regions, end_row);
+                        _this.record_in_log('finish record region information container', _this.dbf_tables.kladr, _this.buffer_main_tables.regions, end_row);
                         console.log('record_region_information:', 'Запись произведена успешно', row_now, end_row);
                         _this.stage++;
                         _this.stage_controller();
@@ -795,7 +819,7 @@ router.get('/distribution', function (req, res, next) {
             var data = this.buffer_region_table_information;
             var dataLength = this.buffer_region_table_information.length;
             //Создаю все таблицы для городов при помощи цикла
-            this.record_in_log('start', this.dbf_tables.kladr, this.city_prefix, dataLength);
+            this.record_in_log('start create all city tables', this.dbf_tables.kladr, this.city_prefix, dataLength);
             for (i = 0; i < dataLength; i++) {
                 table_name = data[i].number + this.city_prefix;
                 connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
@@ -830,7 +854,7 @@ router.get('/distribution', function (req, res, next) {
                     console.log('create_all_city_tables:', 'Внимание! Под города созданно новых таблиц:', dataLength);
                     console.log('create_all_city_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
-                    _this.record_in_log('finish', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
+                    _this.record_in_log('finish create all city tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
                     _this.show_tables(_this.bufferMySQL_DB, 'create_all_city_tables'); //Обновляю данные по таблицам
                     _this.stage_controller();
                 }
@@ -843,7 +867,7 @@ router.get('/distribution', function (req, res, next) {
             var data = this.buffer_region_table_information;
             var dataLength = this.buffer_region_table_information.length;
             //Очищаю все данные хранящиеся в таблицах городов
-            this.record_in_log('start', this.dbf_tables.kladr, this.city_prefix, dataLength);
+            this.record_in_log('start truncate all city tables', this.dbf_tables.kladr, this.city_prefix, dataLength);
             for (i = 0; i < dataLength; i++) {
                 table_name = data[i].number + this.city_prefix;
                 connection.query('TRUNCATE TABLE  ??.??',
@@ -866,7 +890,7 @@ router.get('/distribution', function (req, res, next) {
                     console.log('truncate_all_city_tables:', 'Внимание! Прошла очистка всего содержимого в таблицах городов.', dataLength);
                     console.log('truncate_all_city_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
-                    _this.record_in_log('finish', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
+                    _this.record_in_log('finish truncate all city tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
                     _this.stage_controller();
                 }
             })(this));
@@ -881,7 +905,7 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('distribution_all_city_tables', (function (_this) {
                 return function () {
                     _this.stage++;
-                    //_this.record_in_log('finish', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
+                    //_this.record_in_log('finish distribution all city tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
                     _this.stage_controller();
                 }
             })(this));*/
@@ -893,7 +917,7 @@ router.get('/distribution', function (req, res, next) {
             var data = this.buffer_region_table_information;
             var dataLength = this.buffer_region_table_information.length;
             //Создаю все таблицы для городов при помощи цикла
-            this.record_in_log('start', this.dbf_tables.street, this.street_prefix, dataLength);
+            this.record_in_log('start create all street tables', this.dbf_tables.street, this.street_prefix, dataLength);
             for (i = 0; i < dataLength; i++) {
                 table_name = data[i].number + this.street_prefix;
                 connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
@@ -927,10 +951,10 @@ router.get('/distribution', function (req, res, next) {
             }
             eventEmitter.once('create_all_street_tables', (function (_this) {
                 return function () {
-                    console.log('create_all_city_tables:', 'Внимание! Под улицы созданно новых таблиц:', dataLength);
-                    console.log('create_all_city_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
+                    console.log('create_all_street_tables:', 'Внимание! Под улицы созданно новых таблиц:', dataLength);
+                    console.log('create_all_street_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
-                    _this.record_in_log('finish', _this.dbf_tables.street, _this.street_prefix, dataLength);
+                    _this.record_in_log('finish create all street tables', _this.dbf_tables.street, _this.street_prefix, dataLength);
                     _this.show_tables(_this.bufferMySQL_DB, 'create_all_street_tables'); //Обновляю данные по таблицам
                     _this.stage_controller();
                 }
@@ -943,7 +967,7 @@ router.get('/distribution', function (req, res, next) {
             var data = this.buffer_region_table_information;
             var dataLength = this.buffer_region_table_information.length;
             //Очищаю все данные в таблицах улиц
-            this.record_in_log('start', this.dbf_tables.street, this.street_prefix, dataLength);
+            this.record_in_log('start truncate all street tables', this.dbf_tables.street, this.street_prefix, dataLength);
             for (i = 0; i < dataLength; i++) {
                 table_name = data[i].number + this.street_prefix;
                 connection.query('TRUNCATE TABLE  ??.??',
@@ -966,7 +990,7 @@ router.get('/distribution', function (req, res, next) {
                     console.log('truncate_all_street_tables:', 'Внимание! Прошла очистка всего содержимого в таблицах улиц.', dataLength);
                     console.log('truncate_all_street_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
-                    _this.record_in_log('finish', _this.dbf_tables.street, _this.street_prefix, dataLength);
+                    _this.record_in_log('finish truncate all street tables', _this.dbf_tables.street, _this.street_prefix, dataLength);
                     _this.stage_controller();
                 }
             })(this));
@@ -982,7 +1006,7 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('distribution_all_street_tables', (function (_this) {
                 return function () {
                     _this.stage++;
-                    //_this.record_in_log('finish', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
+                    //_this.record_in_log('finish distribution all street tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
                     _this.stage_controller();
                 }
             })(this));*/
@@ -994,7 +1018,7 @@ router.get('/distribution', function (req, res, next) {
             var data = this.buffer_region_table_information;
             var dataLength = this.buffer_region_table_information.length;
             //Создаю все таблицы для городов при помощи цикла
-            this.record_in_log('start', this.dbf_tables.doma, this.home_prefix, dataLength);
+            this.record_in_log('start create all home tables', this.dbf_tables.doma, this.home_prefix, dataLength);
             for (i = 0; i < dataLength; i++) {
                 table_name = data[i].number + this.home_prefix;
                 connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
@@ -1031,7 +1055,7 @@ router.get('/distribution', function (req, res, next) {
                     console.log('create_all_city_tables:', 'Внимание! Под дома созданно новых таблиц:', dataLength);
                     console.log('create_all_city_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
-                    _this.record_in_log('finish', _this.dbf_tables.doma, _this.home_prefix, dataLength);
+                    _this.record_in_log('finish create all home tables', _this.dbf_tables.doma, _this.home_prefix, dataLength);
                     _this.show_tables(_this.bufferMySQL_DB, 'create_all_home_tables'); //Обновляю данные по таблицам
                     _this.stage_controller();
                 }
@@ -1044,7 +1068,7 @@ router.get('/distribution', function (req, res, next) {
             var data = this.buffer_region_table_information;
             var dataLength = this.buffer_region_table_information.length;
             //Очищаю все данные в таблицах домов
-            this.record_in_log('start', this.dbf_tables.doma, this.home_prefix, dataLength);
+            this.record_in_log('start truncate all home tables', this.dbf_tables.doma, this.home_prefix, dataLength);
             for (i = 0; i < dataLength; i++) {
                 table_name = data[i].number + this.home_prefix;
                 connection.query('TRUNCATE TABLE  ??.??',
@@ -1067,7 +1091,7 @@ router.get('/distribution', function (req, res, next) {
                     console.log('truncate_all_home_tables:', 'Внимание! Прошла очистка всего содержимого в таблицах домов.', dataLength);
                     console.log('truncate_all_home_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
-                    _this.record_in_log('finish', _this.dbf_tables.doma, _this.home_prefix, dataLength);
+                    _this.record_in_log('finish truncate all home tables', _this.dbf_tables.doma, _this.home_prefix, dataLength);
                     _this.stage_controller();
                 }
             })(this));
@@ -1083,7 +1107,7 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('distribution_all_home_tables', (function (_this) {
                 return function () {
                     _this.stage++;
-                    //_this.record_in_log('finish', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
+                    //_this.record_in_log('finish distribution all home tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
                     _this.stage_controller();
                 }
             })(this));*/
