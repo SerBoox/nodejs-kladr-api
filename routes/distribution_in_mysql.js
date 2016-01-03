@@ -58,9 +58,8 @@ router.get('/distribution', function (req, res, next) {
             this.dbf_log_table_information = undefined;
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
-            this.start_stage = 0;
-            this.stage = 4;
-            this.finish_stage = 0;
+            this.stage = 2;
+            this.finish_stage = 99;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
                 log: 'aa_record_time_log',
@@ -454,33 +453,48 @@ router.get('/distribution', function (req, res, next) {
                 return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.socrbase);
             else if (this.buffer_region_table_information == undefined)
                 return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+            //По необходимости обновлям информацию
+            if (this.buffer_region_table_information.length < 1)
+                return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
             //Выполняем основные стадии процесса
-            if (this.stage === 0) {
+            if ((this.stage === 0) && (this.stage <= this.finish_stage)) {
                 //Чистим таблицу с логами
                 this.truncate_table(this.buffer_main_tables.log);
                 //Удаляем все лишние таблицы
                 return this.delete_all_tables_stage_0();
-            } else if (this.stage === 1) {
+            } else if ((this.stage === 1) && (this.stage <= this.finish_stage)) {
                 //Перенос данных по регионам
                 return this.distribution_region();
-            } else if (this.stage === 2) {
-                //По необходимости обновлям информацию
-                if (this.buffer_region_table_information.length < 1)
-                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+                //-----------------------------------------------------------//
+            } else if ((this.stage === 2) && (this.stage <= this.finish_stage)) {
                 //Создание таблиц для городов,деревень и.т.д
                 return this.create_all_city_tables();
-            } else if (this.stage === 3) {
-                //По необходимости обновлям информацию
-                if (this.buffer_region_table_information.length < 1)
-                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+            } else if ((this.stage === 3) && (this.stage <= this.finish_stage)) {
+                //Очистка всего содержимого у таблиц городов,деревень и.т.д
+                return this.truncate_all_city_tables();
+            } else if ((this.stage === 4) && (this.stage <= this.finish_stage)) {
+                //Перенос данных по городам, деревгям и.т.д.
+                return this.distribution_all_city_tables();
+                //-----------------------------------------------------------//
+            } else if ((this.stage === 5) && (this.stage <= this.finish_stage)) {
                 //Создание таблиц для улиц
                 return this.create_all_street_tables();
-            } else if (this.stage === 4) {
-                //По необходимости обновлям информацию
-                if (this.buffer_region_table_information.length < 1)
-                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+            } else if ((this.stage === 6) && (this.stage <= this.finish_stage)) {
+                //Очистка всего содержимого у таблиц улиц
+                return this.truncate_all_street_tables();
+            }else if ((this.stage === 7) && (this.stage <= this.finish_stage)) {
+                //Перенос данных по улицам
+                return this.distribution_all_street_tables();
+                //-----------------------------------------------------------//
+            }else if ((this.stage === 8) && (this.stage <= this.finish_stage)) {
                 //Создание таблиц для домов
                 return this.create_all_home_tables();
+            } else if ((this.stage === 9) && (this.stage <= this.finish_stage)) {
+                //Очистка всего содержимого у таблиц домов
+                return this.truncate_all_home_tables();
+            }else if ((this.stage === 10) && (this.stage <= this.finish_stage)) {
+                //Перенос данных по домам
+                return this.distribution_all_home_tables();
             }
 
             return this.close_connection();
@@ -823,6 +837,56 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
+        Distribution.prototype.truncate_all_city_tables = function () {
+            //TRUNCATE ALL CITY TABLES
+            var i, j = 0, table_name;
+            var data = this.buffer_region_table_information;
+            var dataLength = this.buffer_region_table_information.length;
+            //Очищаю все данные хранящиеся в таблицах городов
+            this.record_in_log('start', this.dbf_tables.kladr, this.city_prefix, dataLength);
+            for (i = 0; i < dataLength; i++) {
+                table_name = data[i].number + this.city_prefix;
+                connection.query('TRUNCATE TABLE  ??.??',
+                    [this.bufferMySQL_DB, table_name],
+                    function (error, result) {
+                        if (error !== null) {
+                            console.log("MySQL Truncate Table Error: " + error);
+                        } else {
+                            j++;
+                            if ((dataLength - 1) == j) {
+                                eventEmitter.emit('truncate_all_city_tables');
+                            }
+                        }
+                    }
+                );
+            }
+
+            eventEmitter.once('truncate_all_city_tables', (function (_this) {
+                return function () {
+                    console.log('truncate_all_city_tables:', 'Внимание! Прошла очистка всего содержимого в таблицах городов.', dataLength);
+                    console.log('truncate_all_city_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
+                    _this.stage++;
+                    _this.record_in_log('finish', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
+                    _this.stage_controller();
+                }
+            })(this));
+        };
+
+        Distribution.prototype.distribution_all_city_tables = function () {
+            //DISTRIBUTION ALL CITY TABLES
+            this.stage++;
+            this.stage_controller();
+
+            /*eventEmitter.emit('distribution_all_city_tables');
+            eventEmitter.once('distribution_all_city_tables', (function (_this) {
+                return function () {
+                    _this.stage++;
+                    //_this.record_in_log('finish', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
+                    _this.stage_controller();
+                }
+            })(this));*/
+        };
+
         Distribution.prototype.create_all_street_tables = function () {
             //CREATE ALL STREET TABLES
             var i, j = 0, table_name;
@@ -873,6 +937,57 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
+        Distribution.prototype.truncate_all_street_tables = function () {
+            //TRUNCATE ALL STREET TABLES
+            var i, j = 0, table_name;
+            var data = this.buffer_region_table_information;
+            var dataLength = this.buffer_region_table_information.length;
+            //Очищаю все данные в таблицах улиц
+            this.record_in_log('start', this.dbf_tables.street, this.street_prefix, dataLength);
+            for (i = 0; i < dataLength; i++) {
+                table_name = data[i].number + this.street_prefix;
+                connection.query('TRUNCATE TABLE  ??.??',
+                    [this.bufferMySQL_DB, table_name],
+                    function (error, result) {
+                        if (error !== null) {
+                            console.log("MySQL Truncate STREET Tables Error: " + error);
+                        } else {
+                            j++;
+                            if ((dataLength - 1) == j) {
+                                eventEmitter.emit('truncate_all_street_tables');
+                            }
+                        }
+                    }
+                );
+            }
+
+            eventEmitter.once('truncate_all_street_tables', (function (_this) {
+                return function () {
+                    console.log('truncate_all_street_tables:', 'Внимание! Прошла очистка всего содержимого в таблицах улиц.', dataLength);
+                    console.log('truncate_all_street_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
+                    _this.stage++;
+                    _this.record_in_log('finish', _this.dbf_tables.street, _this.street_prefix, dataLength);
+                    _this.stage_controller();
+                }
+            })(this));
+        };
+
+        Distribution.prototype.distribution_all_street_tables = function () {
+            //DISTRIBUTION ALL STREET TABLES
+
+            this.stage++;
+            this.stage_controller();
+
+            /*eventEmitter.emit('distribution_all_street_tables');
+            eventEmitter.once('distribution_all_street_tables', (function (_this) {
+                return function () {
+                    _this.stage++;
+                    //_this.record_in_log('finish', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
+                    _this.stage_controller();
+                }
+            })(this));*/
+        };
+
         Distribution.prototype.create_all_home_tables = function () {
             //CREATE ALL STREET TABLES
             var i, j = 0, table_name;
@@ -921,6 +1036,57 @@ router.get('/distribution', function (req, res, next) {
                     _this.stage_controller();
                 }
             })(this));
+        };
+
+        Distribution.prototype.truncate_all_home_tables = function () {
+            //TRUNCATE ALL HOME TABLES
+            var i, j = 0, table_name;
+            var data = this.buffer_region_table_information;
+            var dataLength = this.buffer_region_table_information.length;
+            //Очищаю все данные в таблицах домов
+            this.record_in_log('start', this.dbf_tables.doma, this.home_prefix, dataLength);
+            for (i = 0; i < dataLength; i++) {
+                table_name = data[i].number + this.home_prefix;
+                connection.query('TRUNCATE TABLE  ??.??',
+                    [this.bufferMySQL_DB, table_name],
+                    function (error, result) {
+                        if (error !== null) {
+                            console.log("MySQL Truncate Home Tables Error: " + error);
+                        } else {
+                            j++;
+                            if ((dataLength - 1) == j) {
+                                eventEmitter.emit('truncate_all_home_tables');
+                            }
+                        }
+                    }
+                );
+            }
+
+            eventEmitter.once('truncate_all_home_tables', (function (_this) {
+                return function () {
+                    console.log('truncate_all_home_tables:', 'Внимание! Прошла очистка всего содержимого в таблицах домов.', dataLength);
+                    console.log('truncate_all_home_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
+                    _this.stage++;
+                    _this.record_in_log('finish', _this.dbf_tables.doma, _this.home_prefix, dataLength);
+                    _this.stage_controller();
+                }
+            })(this));
+        };
+
+        Distribution.prototype.distribution_all_home_tables = function () {
+            //DISTRIBUTION ALL HOME TABLES
+
+            this.stage++;
+            this.stage_controller();
+
+            /*eventEmitter.emit('distribution_all_home_tables');
+            eventEmitter.once('distribution_all_home_tables', (function (_this) {
+                return function () {
+                    _this.stage++;
+                    //_this.record_in_log('finish', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
+                    _this.stage_controller();
+                }
+            })(this));*/
         };
 
         Distribution.prototype.drop_table = function (name_database, name_table) {
