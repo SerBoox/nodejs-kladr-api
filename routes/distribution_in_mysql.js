@@ -59,7 +59,7 @@ router.get('/distribution', function (req, res, next) {
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
             this.stage = 0;
-            this.finish_stage = 99;
+            this.finish_stage = 4;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
                 log: 'aa_record_time_log',
@@ -839,6 +839,7 @@ router.get('/distribution', function (req, res, next) {
                 connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
                     "`id` int(11) NOT NULL AUTO_INCREMENT," +
                     "`dbf_id` int(11) NOT NULL," +
+                    "`region_id` int(11) NOT NULL," +
                     "`name` varchar(80) NOT NULL DEFAULT ''," +
                     "`socr` varchar(20) NOT NULL DEFAULT ''," +
                     "`code` varchar(25) NOT NULL DEFAULT ''," +
@@ -848,7 +849,8 @@ router.get('/distribution', function (req, res, next) {
                     "`ocatd` varchar(21) NOT NULL DEFAULT ''," +
                     "`status` varchar(11) NOT NULL DEFAULT ''," +
                     "PRIMARY KEY (`id`)," +
-                    "KEY `dbf_id` (`dbf_id`)" +
+                    "KEY `dbf_id` (`dbf_id`)," +
+                    "KEY `region_id` (`region_id`)" +
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
                     [this.bufferMySQL_DB, table_name],
                     function (error, result) {
@@ -866,7 +868,6 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('create_all_city_tables', (function (_this) {
                 return function () {
                     console.log('create_all_city_tables:', 'Внимание! Под города созданно новых таблиц:', dataLength);
-                    console.log('create_all_city_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
                     _this.record_in_log('finish create all city tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
                     _this.show_tables(_this.bufferMySQL_DB, 'create_all_city_tables'); //Обновляю данные по таблицам
@@ -902,7 +903,6 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('truncate_all_city_tables', (function (_this) {
                 return function () {
                     console.log('truncate_all_city_tables:', 'Внимание! Прошла очистка всего содержимого в таблицах городов.', dataLength);
-                    console.log('truncate_all_city_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
                     _this.record_in_log('finish truncate all city tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
                     _this.stage_controller();
@@ -966,7 +966,6 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('create_all_street_tables', (function (_this) {
                 return function () {
                     console.log('create_all_street_tables:', 'Внимание! Под улицы созданно новых таблиц:', dataLength);
-                    console.log('create_all_street_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
                     _this.record_in_log('finish create all street tables', _this.dbf_tables.street, _this.street_prefix, dataLength);
                     _this.show_tables(_this.bufferMySQL_DB, 'create_all_street_tables'); //Обновляю данные по таблицам
@@ -1002,7 +1001,6 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('truncate_all_street_tables', (function (_this) {
                 return function () {
                     console.log('truncate_all_street_tables:', 'Внимание! Прошла очистка всего содержимого в таблицах улиц.', dataLength);
-                    console.log('truncate_all_street_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
                     _this.record_in_log('finish truncate all street tables', _this.dbf_tables.street, _this.street_prefix, dataLength);
                     _this.stage_controller();
@@ -1067,7 +1065,6 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('create_all_home_tables', (function (_this) {
                 return function () {
                     console.log('create_all_city_tables:', 'Внимание! Под дома созданно новых таблиц:', dataLength);
-                    console.log('create_all_city_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
                     _this.record_in_log('finish create all home tables', _this.dbf_tables.doma, _this.home_prefix, dataLength);
                     _this.show_tables(_this.bufferMySQL_DB, 'create_all_home_tables'); //Обновляю данные по таблицам
@@ -1103,7 +1100,6 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('truncate_all_home_tables', (function (_this) {
                 return function () {
                     console.log('truncate_all_home_tables:', 'Внимание! Прошла очистка всего содержимого в таблицах домов.', dataLength);
-                    console.log('truncate_all_home_tables:', 'Внимание! Стоит учесть, что в таблице region строк больше чем регионов, т.к. часть из них может иметь другое название, но иметь один и тот же номер');
                     _this.stage++;
                     _this.record_in_log('finish truncate all home tables', _this.dbf_tables.doma, _this.home_prefix, dataLength);
                     _this.stage_controller();
