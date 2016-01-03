@@ -494,14 +494,14 @@ router.get('/distribution', function (req, res, next) {
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Очистка всего содержимого у таблиц улиц
                 return this.truncate_all_street_tables();
-            }else if ((this.stage === 7) && (this.stage <= this.finish_stage)) {
+            } else if ((this.stage === 7) && (this.stage <= this.finish_stage)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Перенос данных по улицам
                 return this.distribution_all_street_tables();
                 //-----------------------------------------------------------//
-            }else if ((this.stage === 8) && (this.stage <= this.finish_stage)) {
+            } else if ((this.stage === 8) && (this.stage <= this.finish_stage)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
@@ -513,7 +513,7 @@ router.get('/distribution', function (req, res, next) {
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Очистка всего содержимого у таблиц домов
                 return this.truncate_all_home_tables();
-            }else if ((this.stage === 10) && (this.stage <= this.finish_stage)) {
+            } else if ((this.stage === 10) && (this.stage <= this.finish_stage)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
@@ -521,12 +521,13 @@ router.get('/distribution', function (req, res, next) {
                 return this.distribution_all_home_tables();
             }
 
+
             return this.close_connection();
         };
 
         Distribution.prototype.select_all = function (name_database, name_table) {
             //SELECT ALL
-            var data;
+            var data, dataLength = 0, i, j, k, deleteObjects = [];
             connection.query('SELECT * FROM ??.??', [name_database, name_table],
                 function (error, result) {
                     if (error !== null) {
@@ -541,19 +542,32 @@ router.get('/distribution', function (req, res, next) {
                 return function () {
                     console.log('SELECT * FROM', name_database, name_table);
                     if ((_this.DBF_MySQL_DB === name_database) && (_this.dbf_tables.log === name_table)) {
+                        console.log('select_all', 'Полученна инфорамция из `dbf`.`logs` в строк', data.length);
                         _this.dbf_log_table_information = data;
                         _this.stage_controller();
                         return false;
 
                     } else if ((_this.bufferMySQL_DB === name_database) && (_this.buffer_main_tables.log === name_table)) {
+                        console.log('select_all', 'Полученна инфорамция из `buffer`.`logs` в строк', data.length);
                         _this.buffer_log_table_information = data;
                         _this.stage_controller();
                         return false;
                     } else if ((_this.bufferMySQL_DB === name_database) && (_this.buffer_main_tables.socrbase === name_table)) {
+                        console.log('select_all', 'Полученна инфорамция из `buffer`.`socrbase`  в строк', data.length);
                         _this.socrase_table_information = data;
                         _this.stage_controller();
                         return false;
                     } else if ((_this.bufferMySQL_DB === name_database) && (_this.buffer_main_tables.regions === name_table)) {
+                        console.log('select_all', 'Полученна инфорамция из `buffer`.`regions` в строк', data.length);
+                        dataLength = data.length;
+                        for (i = 0; i < dataLength; i++)
+                            for (j = (i + 1); j < dataLength; j++)
+                                if (data[i].number == data[j].number) {
+                                    console.log('select_all:','В `buffer`.`region` обнаружен дубль:', data[j].id,data[j].number, data[j].socr,data[j].name);
+                                    data.splice(j, 1);
+                                    dataLength = data.length;
+                                }
+                        console.log('select_all', 'В следствии дублей инфорамция из `buffer`.`regions` сокращена до', data.length);
                         _this.buffer_region_table_information = data;
                         _this.stage_controller();
                         return false;
@@ -902,13 +916,13 @@ router.get('/distribution', function (req, res, next) {
             this.stage_controller();
 
             /*eventEmitter.emit('distribution_all_city_tables');
-            eventEmitter.once('distribution_all_city_tables', (function (_this) {
-                return function () {
-                    _this.stage++;
-                    //_this.record_in_log('finish distribution all city tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
-                    _this.stage_controller();
-                }
-            })(this));*/
+             eventEmitter.once('distribution_all_city_tables', (function (_this) {
+             return function () {
+             _this.stage++;
+             //_this.record_in_log('finish distribution all city tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
+             _this.stage_controller();
+             }
+             })(this));*/
         };
 
         Distribution.prototype.create_all_street_tables = function () {
@@ -1003,13 +1017,13 @@ router.get('/distribution', function (req, res, next) {
             this.stage_controller();
 
             /*eventEmitter.emit('distribution_all_street_tables');
-            eventEmitter.once('distribution_all_street_tables', (function (_this) {
-                return function () {
-                    _this.stage++;
-                    //_this.record_in_log('finish distribution all street tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
-                    _this.stage_controller();
-                }
-            })(this));*/
+             eventEmitter.once('distribution_all_street_tables', (function (_this) {
+             return function () {
+             _this.stage++;
+             //_this.record_in_log('finish distribution all street tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
+             _this.stage_controller();
+             }
+             })(this));*/
         };
 
         Distribution.prototype.create_all_home_tables = function () {
@@ -1104,13 +1118,13 @@ router.get('/distribution', function (req, res, next) {
             this.stage_controller();
 
             /*eventEmitter.emit('distribution_all_home_tables');
-            eventEmitter.once('distribution_all_home_tables', (function (_this) {
-                return function () {
-                    _this.stage++;
-                    //_this.record_in_log('finish distribution all home tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
-                    _this.stage_controller();
-                }
-            })(this));*/
+             eventEmitter.once('distribution_all_home_tables', (function (_this) {
+             return function () {
+             _this.stage++;
+             //_this.record_in_log('finish distribution all home tables', _this.dbf_tables.kladr, _this.city_prefix, dataLength);
+             _this.stage_controller();
+             }
+             })(this));*/
         };
 
         Distribution.prototype.drop_table = function (name_database, name_table) {
