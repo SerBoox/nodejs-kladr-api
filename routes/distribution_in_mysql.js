@@ -10,7 +10,7 @@ var async = require('async');
 var Promise = require('promise');
 var dateFormat = require('dateformat');
 var now = new Date();
-var isNum = require('isNum');
+//var isNum = require('isNum');
 
 router.get('/test', function (req, res, next) {
 
@@ -1014,6 +1014,7 @@ router.get('/distribution', function (req, res, next) {
                 });
             eventEmitter.once('get_city_information', (function (_this) {
                 return function () {
+                    _this.record_in_log('get city information', _this.dbf_tables.kladr, table_name, end_row);
                     _this.record_city_information_container(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay);
                 }
             })(this));
@@ -1335,11 +1336,10 @@ router.get('/distribution', function (req, res, next) {
 
     })(eventEmitter);
 
-
     var test = new Distribution();
     test.open_connection();
 
     res.send('Иди смотри)');
-})
-;
+});
+
 module.exports = router;
