@@ -71,7 +71,8 @@ router.get('/distribution', function (req, res, next) {
             this.buffer_main_tables = {
                 log: '000_record_time_log',
                 socrbase: '000_socrbase',
-                regions: '000_regions'
+                regions: '000_regions',
+                city: '000_city'
             };
             eventEmitter.setMaxListeners(50000);
             this.row = 0;
@@ -442,6 +443,7 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
         Distribution.prototype.stage_controller = function () {
             console.log('ACTIVATE STAGE_CONTROLLER', 'STAGE:', this.stage);
             //Получаем информацию из таблиц с логами
@@ -467,19 +469,23 @@ router.get('/distribution', function (req, res, next) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+                //Паралельно создаем главную таблицу для городов,деревень и.т.д
+                this.create_main_city_table();
                 //Создание таблиц для городов,деревень и.т.д
                 return this.create_all_city_tables();
             } else if ((this.stage === 3) && (this.stage <= this.finish_stage)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+                //Паралельно очищаем данные в главной таблице городов, деревень и.т.д.
+                this.truncate_table(this.buffer_main_tables.city);
                 //Очистка всего содержимого у таблиц городов,деревень и.т.д
                 return this.truncate_all_city_tables();
             } else if ((this.stage === 4) && (this.stage <= this.finish_stage)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
-                //Перенос данных по городам, деревгям и.т.д.
+                //Перенос данных по городам, деревням и.т.д. (Запись в главную таблицу городов производится внутри)
                 return this.distribution_all_city_tables(0, (this.buffer_region_table_information.length - 1));
                 //-----------------------------------------------------------//
             } else if ((this.stage === 5) && (this.stage <= this.finish_stage)) {
@@ -523,6 +529,7 @@ router.get('/distribution', function (req, res, next) {
 
             return this.close_connection();
         };
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
 
         Distribution.prototype.select_all = function (name_database, name_table) {
             //SELECT ALL
@@ -826,6 +833,48 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
+        Distribution.prototype.create_main_city_table = function () {
+            //CREATE MAIN CITY TABLES
+
+            this.record_in_log('start create main city table', this.dbf_tables.kladr, this.buffer_main_tables.city, 0);
+            //Создаю главную таблицу для городов, деревень и.т.д
+            connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
+                "`id` int(11) NOT NULL AUTO_INCREMENT," +
+                "`dbf_id` int(11) NOT NULL," +
+                "`region_id` int(11) NOT NULL," +
+                "`region_number` int(11) NOT NULL," +
+                "`city_id` int(11) NOT NULL," +
+                "`name` varchar(80) NOT NULL DEFAULT ''," +
+                "`socr` varchar(20) NOT NULL DEFAULT ''," +
+                "`code` varchar(25) NOT NULL DEFAULT ''," +
+                "`index` varchar(16) NOT NULL DEFAULT ''," +
+                "`gninmb` varchar(14) NOT NULL DEFAULT ''," +
+                "`uno` varchar(14) NOT NULL DEFAULT ''," +
+                "`ocatd` varchar(21) NOT NULL DEFAULT ''," +
+                "`status` varchar(11) NOT NULL DEFAULT ''," +
+                "PRIMARY KEY (`id`)," +
+                "KEY `dbf_id` (`dbf_id`)," +
+                "KEY `region_id` (`region_id`)," +
+                "KEY `region_number` (`region_number`)," +
+                "KEY `city_id` (`city_id`)" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
+                [this.bufferMySQL_DB, this.buffer_main_tables.city],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL CREATE MAIN CITY TABLE Error: " + error);
+                    } else {
+                        eventEmitter.emit('create_main_city_table');
+                    }
+                });
+
+            eventEmitter.once('create_main_city_table', (function (_this) {
+                return function () {
+                    console.log('create_main_city_table:', 'Внимание! Создание главной таблицы под города прошло успешно:', _this.bufferMySQL_DB, _this.buffer_main_tables.city);
+                    _this.record_in_log('finish create all city tables', _this.bufferMySQL_DB, _this.buffer_main_tables.city, 0);
+                }
+            })(this));
+        };
+
         Distribution.prototype.create_all_city_tables = function () {
             //CREATE ALL CITY TABLES
             var i, j = 0, table_name;
@@ -944,19 +993,19 @@ router.get('/distribution', function (req, res, next) {
                     console.log('distribution_all_city_tables:', 'В таблице строк', _this.DBF_MySQL_DB, _this.dbf_tables.kladr, row);
                     if (row < 1) {
                         first_key++;
-                        if(first_key < last_kay){
+                        if (first_key < last_kay) {
                             console.log('distribution_all_city_tables:', 'Внимание! По запросу ничего не найденно! Запрашиваю города по следующему региону', region_number, first_key, last_kay, start_row, finish_row);
                             _this.record_in_log('empty query', _this.dbf_tables.kladr, table_name, end_row);
                             _this.distribution_all_city_tables(first_key, last_kay, start_row, finish_row);
 
-                        }else{
-                            console.log('distribution_all_city_tables:', 'Внимание! По последнему запросу ни найденно ни одной строки. Запись завершенна.', region_number ,first_key, last_kay, start_row, finish_row);
+                        } else {
+                            console.log('distribution_all_city_tables:', 'Внимание! По последнему запросу ни найденно ни одной строки. Запись завершенна.', region_number, first_key, last_kay, start_row, finish_row);
                             _this.record_in_log('empty query', _this.dbf_tables.kladr, table_name, end_row);
                             _this.record_in_log('finish record all city information container', _this.dbf_tables.kladr, _this.city_prefix, end_row);
                             _this.stage++;
                             _this.stage_controller();
                         }
-                    } else{
+                    } else {
                         if ((start_row !== undefined) && (start_row < row) && (start_row !== finish_row)) {
                             if ((finish_row !== undefined) && (finish_row <= row)) {
                                 first_row = start_row;
@@ -1015,15 +1064,60 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('get_city_information', (function (_this) {
                 return function () {
                     _this.record_in_log('get city information', _this.dbf_tables.kladr, table_name, end_row);
+                    _this.record_main_city_information_container(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay);
                     _this.record_city_information_container(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay);
                 }
             })(this));
         };
 
+        Distribution.prototype.record_main_city_information_container = function (data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay) {
+            //Получаем единую строку запроса
+            var query_body = "INSERT INTO ??.?? (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`) VALUES ( NULL , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query_tail = "( NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query = '', i;
+            if (dataLength === 1)
+                query += query_body + ";";
+            else {
+                for (i = 0; i < dataLength; i++) {
+                    if (i === 0) {
+                        query += query_body;
+                    } else if ((dataLength - 1) === i) {
+                        query = query + ', ' + query_tail + ';';
+                    } else {
+                        query = query + ', ' + query_tail;
+                    }
+                }
+            }
+
+            //Получаем единый массив запроса
+            var main_array = [this.bufferMySQL_DB, this.buffer_main_tables.city];
+            var query_values = [];
+            for (i = 0; i < dataLength; i++) {
+                if (i === 0)
+                    query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id,
+                        this.buffer_region_table_information[first_key].number, (i + 1), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd, data[i].status);
+                else
+                    query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].id,
+                        this.buffer_region_table_information[first_key].number, (i + 1), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd, data[i].status);
+            }
+
+
+            //Записываем данные единым запросом
+            connection.query(query, query_values,
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL insert main city table Error: " + error);
+                    } else {
+                        first_row = first_row + dataLength;
+                        console.log('record_main_city_information_container:', 'всего/записанно/контейнером :', end_row, first_row, dataLength);
+                    }
+                });
+        };
+
         Distribution.prototype.record_city_information_container = function (data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay) {
             //Получаем единую строку запроса
-            var query_body = "INSERT INTO ??.?? (`id`, `dbf_id`,`region_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            var query_tail = "(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query_body = "INSERT INTO ??.?? (`id`, `dbf_id`,`region_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query_tail = "( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             var query = '', i;
             if (dataLength === 1)
                 query += query_body + ";";
@@ -1044,11 +1138,11 @@ router.get('/distribution', function (req, res, next) {
             var query_values = [];
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
-                    query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id,
+                    query_values = main_array.concat((i + 1), data[i].id, this.buffer_region_table_information[first_key].id,
                         data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb,
                         data[i].uno, data[i].ocatd, data[i].status);
                 else
-                    query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].id,
+                    query_values = query_values.concat((i + 1), data[i].id, this.buffer_region_table_information[first_key].id,
                         data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb,
                         data[i].uno, data[i].ocatd, data[i].status);
             }
