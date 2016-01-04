@@ -58,7 +58,7 @@ router.get('/distribution', function (req, res, next) {
             this.dbf_log_table_information = undefined;
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
-            this.stage = 5;
+            this.stage = 6;
             this.finish_stage = 7;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
@@ -848,7 +848,6 @@ router.get('/distribution', function (req, res, next) {
 
         Distribution.prototype.create_main_city_table = function () {
             //CREATE MAIN CITY TABLE
-
             this.record_in_log('start create main city table', this.dbf_tables.kladr, this.buffer_main_tables.city, 0);
             //Создаю главную таблицу для городов, деревень и.т.д
             connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
@@ -1077,13 +1076,13 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('get_city_information', (function (_this) {
                 return function () {
                     _this.record_in_log('get city information', _this.dbf_tables.kladr, table_name, end_row);
-                    _this.record_main_city_information_container(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay);
+                    _this.record_main_city_information_container(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key);
                     _this.record_city_information_container(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay);
                 }
             })(this));
         };
 
-        Distribution.prototype.record_main_city_information_container = function (data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay) {
+        Distribution.prototype.record_main_city_information_container = function (data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key) {
             //Получаем единую строку запроса
             var query_body = "INSERT INTO ??.?? (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`) VALUES ( NULL , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             var query_tail = "( NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -1314,7 +1313,7 @@ router.get('/distribution', function (req, res, next) {
 
             eventEmitter.once('truncate_all_street_tables', (function (_this) {
                 return function () {
-                    console.log('truncate_all_street_tables:', 'Внимание! Прошла очистка всего содержимого в таблицах улиц.', dataLength);
+                    console.log('truncate_all_street_tables:', 'Внимание! Прошла очистка всего содержимого в таблицах улиц:', dataLength);
                     _this.stage++;
                     _this.record_in_log('finish truncate all street tables', _this.dbf_tables.street, _this.street_prefix, dataLength);
                     _this.stage_controller();
@@ -1327,6 +1326,7 @@ router.get('/distribution', function (req, res, next) {
             var city_data = [], cityDataLength = 0, first_city_key = 0;
             var region_number = this.buffer_region_table_information[first_key].number;
             var city_table_name = region_number + this.city_prefix;
+            var table_row = 0;
             if (first_key === 0) {
                 console.log('ACTIVATE DISTRIBUTION_STREET', 'STAGE:', this.stage);
                 this.record_in_log('start distribution all street tables', this.dbf_tables.street, this.street_prefix, last_kay);
@@ -1364,13 +1364,13 @@ router.get('/distribution', function (req, res, next) {
                         console.log('distribution_all_street_tables:', 'Перехожу к запросу числа улиц по городу', first_key, last_kay);
                         _this.buffer_city_table_information = city_data;
                         _this.record_in_log('city table capacity', _this.bufferMySQL_DB, city_table_name, cityDataLength);
-                        _this.get_street_count_information(first_key, last_kay, start_row, finish_row, region_number, first_city_key, (cityDataLength - 1));
+                        _this.get_street_count_information(first_key, last_kay, start_row, finish_row, region_number, first_city_key, (cityDataLength - 1), table_row);
                     }
                 }
             })(this));
         };
 
-        Distribution.prototype.get_street_count_information = function (first_key, last_kay, start_row, finish_row, region_number, first_city_key, last_city_key) {
+        Distribution.prototype.get_street_count_information = function (first_key, last_kay, start_row, finish_row, region_number, first_city_key, last_city_key, table_row) {
             var row = 0, first_row = 0, end_row = 0;
             var city_name = this.buffer_city_table_information[first_city_key].name;
             var city_code = this.buffer_city_table_information[first_city_key].code;
@@ -1394,14 +1394,16 @@ router.get('/distribution', function (req, res, next) {
                 return function () {
                     console.log('get_street_count_information:', 'регион/город/улиц', region_number, city_name, row);
                     if (row < 1) { //Если по городу, деревне... нет ни одной улицы
-                        first_city_key++;
                         if (first_city_key < last_city_key) { //Если это НЕ последний город, село... в регионе
-                            console.log('get_street_count_information:', 'Внимание! Запрашиваю число улиц по следующему городу,деревне...', region_number, first_city_key, last_city_key);
+                            first_city_key++;
+                            console.log('get_street_count_information:', 'Внимание! Запрашиваю число улиц по следующему городу,деревне... ');
+                            console.log('get_street_count_information:', 'region_number/first_city_key/last_city_key', region_number, first_city_key, last_city_key);
                             _this.record_in_log('not found street in city', _this.dbf_tables.street, city_code, row);
-                            _this.get_street_count_information(first_key, last_kay, start_row, finish_row, region_number, first_city_key, last_city_key);
+                            _this.get_street_count_information(first_key, last_kay, start_row, finish_row, region_number, first_city_key, last_city_key, table_row);
                         } else if (first_key < last_kay) { //Если это последний город, село... в НЕ последнем регионе
+                            first_key++;
                             console.log('get_street_count_information:', 'Внимание! Запрашиваю число городов,деревень... по следующему региону', region_number, first_key, last_kay, start_row, finish_row);
-                            _this.record_in_log('not found street in city', _this.dbf_tables.street, city_code, row);
+                            _this.record_in_log('not found street in city', _this.dbf_tables.street, city_code, (typeof row === 'number' ? row : ''));
                             _this.record_in_log('finish record all city information container', _this.dbf_tables.kladr, _this.city_prefix);
                             _this.distribution_all_street_tables(first_key, last_kay, start_row, finish_row);
                         } else { //Если это последний город, село... в последнем регионе
@@ -1425,60 +1427,54 @@ router.get('/distribution', function (req, res, next) {
                             end_row = row;
                         }
                         _this.record_in_log('start record street in one city', _this.dbf_tables.street, table_name, end_row);
-                        _this.get_street_information(start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay);
+                        _this.get_street_information(start_row, finish_row, first_row, end_row, region_number, city_code, table_name, table_row, first_key, last_kay, first_city_key, last_city_key);
                     }
                 }
             })(this));
         };
 
-        Distribution.prototype.get_street_information = function (start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay) {
+        Distribution.prototype.get_street_information = function (start_row, finish_row, first_row, end_row, region_number, city_code, table_name, table_row, first_key, last_kay, first_city_key, last_city_key) {
             var data, dataLength, limit = 0;
 
             //Определяем LIMIT для текущего захода
             if ((end_row - first_row) <= this.query_limit) {
                 limit = (end_row - first_row);
-                console.log('get_region_information:', 'Запрашиваю все строки:', limit);
+                console.log('get_street_information:', 'Запрашиваю все строки:', limit);
             } else if (((end_row - first_row) > this.query_limit) && ((end_row - first_row) <= (this.query_limit + this.query_limit_error))) {
                 limit = (end_row - first_row);
-                console.log('get_region_information:', 'Запрашиваю строки c превышением лимита:', limit);
+                console.log('get_street_information:', 'Запрашиваю строки c превышением лимита:', limit);
             } else if ((end_row - first_row) > (this.query_limit + this.query_limit_error)) {
                 limit = this.query_limit;
-                console.log('get_region_information:', 'Запрашиваю строки упершись в лимит:', limit);
+                console.log('get_street_information:', 'Запрашиваю строки упершись в лимит:', limit);
             }
 
             connection.query("SELECT * " +
                 "FROM  ??.?? " +
-                "WHERE ( " +
-                "`socr` <>  'Респ'" +
-                "AND  `socr` <>  'край' " +
-                "AND  `socr` <>  'обл' " +
-                "AND  `socr` <>  'АО' " +
-                "AND  `socr` <>  'Аобл') " +
-                "AND  `code` LIKE  ? " +
+                "WHERE  `code` LIKE  ? " +
                 "ORDER BY  `code` ASC " +
                 "LIMIT ? , ?; ",
-                [this.DBF_MySQL_DB, this.dbf_tables.kladr, region_number + '%', first_row, limit],
+                [this.DBF_MySQL_DB, this.dbf_tables.street, city_code + '%', first_row, limit],
                 function (error, result) {
                     if (error !== null) {
-                        console.log("MySQL get city information Error: " + error);
+                        console.log("MySQL get street information Error: " + error);
                     } else {
                         data = result;
                         dataLength = result.length;
-                        eventEmitter.emit('get_city_information');
+                        eventEmitter.emit('get_street_information');
                     }
                 });
-            eventEmitter.once('get_city_information', (function (_this) {
+            eventEmitter.once('get_street_information', (function (_this) {
                 return function () {
-                    _this.record_in_log('get city information', _this.dbf_tables.kladr, table_name, end_row);
-                    _this.record_main_city_information_container(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay);
-                    _this.record_city_information_container(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay);
+                    _this.record_in_log('get street information', _this.dbf_tables.street, table_name, end_row);
+                    _this.record_main_street_information_container(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, table_row, first_key, first_city_key);
+                    _this.record_street_information_container(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, table_row, first_key, last_kay, first_city_key, last_city_key, city_code);
                 }
             })(this));
         };
 
-        Distribution.prototype.record_main_street_information_container = function (data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay) {
+        Distribution.prototype.record_main_street_information_container = function (data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, table_row, first_key, first_city_key) {
             //Получаем единую строку запроса
-            var query_body = "INSERT INTO ??.?? (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`) VALUES ( NULL , ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query_body = "INSERT INTO ??.?? (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `street_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`) VALUES ( NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             var query_tail = "( NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             var query = '', i;
             if (dataLength === 1)
@@ -1496,34 +1492,33 @@ router.get('/distribution', function (req, res, next) {
             }
 
             //Получаем единый массив запроса
-            var main_array = [this.bufferMySQL_DB, this.buffer_main_tables.city];
+            var main_array = [this.bufferMySQL_DB, this.buffer_main_tables.street];
             var query_values = [];
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
                     query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id,
-                        this.buffer_region_table_information[first_key].number, (i + 1 + first_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd, data[i].status);
+                        this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
                 else
                     query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].id,
-                        this.buffer_region_table_information[first_key].number, (i + 1 + first_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd, data[i].status);
+                        this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
             }
-
 
             //Записываем данные единым запросом
             connection.query(query, query_values,
                 function (error, result) {
                     if (error !== null) {
-                        console.log("MySQL insert main city table Error: " + error);
+                        console.log("MySQL insert main street table Error: " + error);
                     } else {
                         first_row = first_row + dataLength;
-                        console.log('record_main_city_information_container:', 'всего/записанно/контейнером :', end_row, first_row, dataLength);
+                        console.log('record_main_street_information_container:', 'всего/записанно/контейнером :', end_row, first_row, dataLength);
                     }
                 });
         };
 
-        Distribution.prototype.record_street_information_container = function (data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay) {
+        Distribution.prototype.record_street_information_container = function (data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, table_row, first_key, last_kay, first_city_key, last_city_key, city_code) {
             //Получаем единую строку запроса
-            var query_body = "INSERT INTO ??.?? (`id`, `dbf_id`,`region_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            var query_tail = "( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query_body = "INSERT INTO ??.?? (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query_tail = "( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             var query = '', i;
             if (dataLength === 1)
                 query += query_body + ";";
@@ -1544,43 +1539,48 @@ router.get('/distribution', function (req, res, next) {
             var query_values = [];
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
-                    query_values = main_array.concat((i + 1 + first_row), data[i].id, this.buffer_region_table_information[first_key].id,
-                        data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb,
-                        data[i].uno, data[i].ocatd, data[i].status);
+                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
                 else
-                    query_values = query_values.concat((i + 1 + first_row), data[i].id, this.buffer_region_table_information[first_key].id,
-                        data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb,
-                        data[i].uno, data[i].ocatd, data[i].status);
+                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
             }
 
             //Записываем данные единым запросом
             connection.query(query, query_values,
                 function (error, result) {
                     if (error !== null) {
-                        console.log("MySQL INSERT regions Error: " + error);
+                        console.log("MySQL INSERT all street tables Error: " + error);
                     } else {
                         first_row = first_row + dataLength;
-                        console.log('record_city_information_container:', 'всего/записанно/контейнером :', end_row, first_row, dataLength);
-                        eventEmitter.emit('record_city_information_container');
+                        table_row = table_row + dataLength;
+                        console.log('record_street_information_container:', 'всего/записанно/контейнером :', end_row, first_row, dataLength);
+                        eventEmitter.emit('record_street_information_container');
                     }
                 });
 
-            eventEmitter.once('record_city_information_container', (function (_this) {
+            eventEmitter.once('record_street_information_container', (function (_this) {
                 return function () {
-                    if (first_row < end_row) {
-                        console.log('record_city_information_container:', 'Запрашиваю очередные строки', region_number, first_row, end_row);
-                        _this.get_city_information(start_row, finish_row, first_row, end_row, region_number, table_name, first_key, last_kay);
+                    if (first_row < end_row) {//Если это НЕ последняя улица в городе, деревне...
+                        console.log('record_street_information_container:', 'Запрашиваю очередные улицы', _this.buffer_city_table_information[first_city_key].name, first_row, end_row);
+                        _this.get_street_information(start_row, finish_row, first_row, end_row, region_number, city_code, table_name, table_row, first_key, last_kay, first_city_key, last_city_key)
 
-                    } else if ((first_row === end_row) && (first_key < last_kay)) {
+                    } else if ((first_row == end_row) && (first_city_key < last_city_key)) {//Если это последняя улица в городе, деревне... и этот город НЕ последний в регионе, области...
+                        first_city_key++;
+                        console.log('record_street_information_container:', 'Запрашиваю данные по очередному городу', _this.buffer_city_table_information[first_city_key].name, first_row, end_row);
+
+                        _this.get_street_count_information (first_key, last_kay, start_row, finish_row, region_number, first_city_key, last_city_key, table_row);
+
+                    } else if ((first_row == end_row) && (first_city_key == last_city_key) && (first_key < last_kay)) { //Если это последняя улица в городе, деревне... и этот город последний в регионе, области... но это НЕ последний регион в списке
                         first_key++;
-                        console.log('record_city_information_container:', 'Запрашиваю города по очередному региону', region_number, first_key, last_kay, start_row, finish_row);
-                        _this.record_in_log('finish record city one region', _this.dbf_tables.kladr, table_name, end_row);
-                        _this.distribution_all_city_tables(first_key, last_kay, start_row, finish_row);
+                        console.log('record_street_information_container:', 'Запрашиваю города по очередному региону', region_number, first_key, last_kay, start_row, finish_row);
+                        _this.record_in_log('finish record street one region', _this.dbf_tables.street, region_number, last_kay);
+                        _this.distribution_all_street_tables(first_key, last_kay, start_row, finish_row);
 
-                    } else {
-                        console.log('record_city_information_container:', 'Перенос всей информации по городам прошел успешно', first_key, last_kay, start_row, finish_row);
-                        _this.record_in_log('finish record city one region', _this.dbf_tables.kladr, table_name, end_row);
-                        _this.record_in_log('finish record all city information container', _this.dbf_tables.kladr, _this.city_prefix, end_row);
+                    } else { //Если это последняя улица в городе, деревне... и этот город последний в регионе, области... и это последний регион в списке
+
+                        //console.log('(',first_row,' == ',end_row,') && (',first_city_key,' == ',last_city_key,') && (',first_key,' < ',last_kay,')');
+                        console.log('record_street_information_container:', 'Перенос всей информации по улицам прошел успешно', first_key, last_kay, start_row, finish_row);
+                        _this.record_in_log('finish record street in city and region', _this.dbf_tables.kladr, table_name, end_row);
+                        _this.record_in_log('finish record all street information container', _this.dbf_tables.kladr, _this.city_prefix, end_row);
                         _this.stage++;
                         _this.stage_controller();
                     }
