@@ -58,8 +58,8 @@ router.get('/distribution', function (req, res, next) {
             this.dbf_log_table_information = undefined;
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
-            this.stage = 0;
-            this.finish_stage = 4;
+            this.stage = 5;
+            this.finish_stage = 7;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
                 log: 'aa_record_time_log',
@@ -72,7 +72,9 @@ router.get('/distribution', function (req, res, next) {
                 log: '000_record_time_log',
                 socrbase: '000_socrbase',
                 regions: '000_regions',
-                city: '000_city'
+                city: '000_city',
+                street: '000_street',
+                home: '000_home'
             };
             eventEmitter.setMaxListeners(50000);
             this.row = 0;
@@ -485,45 +487,53 @@ router.get('/distribution', function (req, res, next) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
-                //Перенос данных по городам, деревням и.т.д. (Запись в главную таблицу городов производится внутри)
+                //Перенос данных по городам, деревням и.т.д. (Запись в главную таблицу городов производится паралельно, внутри)
                 return this.distribution_all_city_tables(0, (this.buffer_region_table_information.length - 1));
                 //-----------------------------------------------------------//
             } else if ((this.stage === 5) && (this.stage <= this.finish_stage)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+                //Паралельно создаем главную таблицу для улиц
+                this.create_main_street_table();
                 //Создание таблиц для улиц
                 return this.create_all_street_tables();
             } else if ((this.stage === 6) && (this.stage <= this.finish_stage)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+                //Паралельно очищаем главную таблицу  для улиц
+                this.truncate_table(this.buffer_main_tables.street);
                 //Очистка всего содержимого у таблиц улиц
                 return this.truncate_all_street_tables();
             } else if ((this.stage === 7) && (this.stage <= this.finish_stage)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
-                //Перенос данных по улицам
+                //Перенос данных по улицам (Запись в главную таблицу улиц производится паралельно, внутри)
                 return this.distribution_all_street_tables(0, (this.buffer_region_table_information.length - 1));
                 //-----------------------------------------------------------//
             } else if ((this.stage === 8) && (this.stage <= this.finish_stage)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+                //Паралельное создание главной таблицы для домов
+                this.create_main_home_table();
                 //Создание таблиц для домов
                 return this.create_all_home_tables();
             } else if ((this.stage === 9) && (this.stage <= this.finish_stage)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+                //Паралельная очистка главной таблицы для домов
+                this.truncate_table(this.buffer_main_tables.home);
                 //Очистка всего содержимого у таблиц домов
                 return this.truncate_all_home_tables();
             } else if ((this.stage === 10) && (this.stage <= this.finish_stage)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
-                //Перенос данных по домам
+                //Перенос данных по домам (Запись в главную таблицу домов производится паралельно, внутри)
                 return this.distribution_all_home_tables(0, (this.buffer_region_table_information.length - 1));
             }
 
@@ -834,7 +844,7 @@ router.get('/distribution', function (req, res, next) {
         };
 
         Distribution.prototype.create_main_city_table = function () {
-            //CREATE MAIN CITY TABLES
+            //CREATE MAIN CITY TABLE
 
             this.record_in_log('start create main city table', this.dbf_tables.kladr, this.buffer_main_tables.city, 0);
             //Создаю главную таблицу для городов, деревень и.т.д
@@ -870,7 +880,7 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('create_main_city_table', (function (_this) {
                 return function () {
                     console.log('create_main_city_table:', 'Внимание! Создание главной таблицы под города прошло успешно:', _this.bufferMySQL_DB, _this.buffer_main_tables.city);
-                    _this.record_in_log('finish create all city tables', _this.bufferMySQL_DB, _this.buffer_main_tables.city, 0);
+                    _this.record_in_log('finish create main city tables', _this.bufferMySQL_DB, _this.buffer_main_tables.city, 0);
                 }
             })(this));
         };
@@ -1182,6 +1192,46 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
+        Distribution.prototype.create_main_street_table = function () {
+            //CREATE MAIN STREET TABLE
+            this.record_in_log('start create main street table', this.dbf_tables.street, this.buffer_main_tables.street, 0);
+            //Создаю главную таблицу для улиц
+            connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
+                "`id` int(11) NOT NULL AUTO_INCREMENT," +
+                "`dbf_id` int(11) NOT NULL," +
+                "`region_id` int(11) NOT NULL," +
+                "`city_id` int(11) NOT NULL," +
+                "`street_id` int(11) NOT NULL," +
+                "`name` varchar(80) NOT NULL DEFAULT ''," +
+                "`socr` varchar(20) NOT NULL DEFAULT ''," +
+                "`code` varchar(28) NOT NULL DEFAULT ''," +
+                "`index` varchar(16) NOT NULL DEFAULT ''," +
+                "`gninmb` varchar(14) NOT NULL DEFAULT ''," +
+                "`uno` varchar(14) NOT NULL DEFAULT ''," +
+                "`ocatd` varchar(21) NOT NULL DEFAULT ''," +
+                "PRIMARY KEY (`id`)," +
+                "KEY `dbf_id` (`dbf_id`)," +
+                "KEY `city_id` (`city_id`)," +
+                "KEY `region_id` (`region_id`)," +
+                "KEY `street_id` (`street_id`) " +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
+                [this.bufferMySQL_DB, this.buffer_main_tables.street],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL CREATE MAIN STREET TABLE Error: " + error);
+                    } else {
+                        eventEmitter.emit('create_main_street_table');
+                    }
+                });
+
+            eventEmitter.once('create_main_street_table', (function (_this) {
+                return function () {
+                    console.log('create_main_street_table:', 'Внимание! Создание главной таблицы под улицы прошло успешно:', _this.bufferMySQL_DB, _this.buffer_main_tables.street);
+                    _this.record_in_log('finish create main street table', _this.bufferMySQL_DB, _this.buffer_main_tables.street, 0);
+                }
+            })(this));
+        };
+
         Distribution.prototype.create_all_street_tables = function () {
             //CREATE ALL STREET TABLES
             var i, j = 0, table_name;
@@ -1281,6 +1331,48 @@ router.get('/distribution', function (req, res, next) {
              })(this));*/
         };
 
+        Distribution.prototype.create_main_home_table = function () {
+            //CREATE MAIN HOME TABLE
+            this.record_in_log('start create main home table', this.bufferMySQL_DB, this.buffer_main_tables.home, 0);
+            //Создаю главную таблицу для домов
+            connection.query("CREATE TABLE IF NOT EXISTS ??.?? (" +
+                "`id` int(11) NOT NULL AUTO_INCREMENT," +
+                "`dbf_id` int(11) NOT NULL," +
+                "`region_id` int(11) NOT NULL," +
+                "`city_id` int(11) NOT NULL," +
+                "`street_id` int(11) NOT NULL," +
+                "`home_id` int(11) NOT NULL," +
+                "`name` varchar(80) NOT NULL DEFAULT ''," +
+                "`socr` varchar(20) NOT NULL DEFAULT ''," +
+                "`code` varchar(28) NOT NULL DEFAULT ''," +
+                "`index` varchar(16) NOT NULL DEFAULT ''," +
+                "`gninmb` varchar(14) NOT NULL DEFAULT ''," +
+                "`uno` varchar(14) NOT NULL DEFAULT ''," +
+                "`ocatd` varchar(21) NOT NULL DEFAULT ''," +
+                "PRIMARY KEY (`id`)," +
+                "KEY `dbf_id` (`dbf_id`)," +
+                "KEY `city_id` (`city_id`)," +
+                "KEY `region_id` (`region_id`)," +
+                "KEY `street_id` (`street_id`)," +
+                "KEY `home_id` (`home_id`) " +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
+                [this.bufferMySQL_DB, this.buffer_main_tables.home],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL CREATE MAIN HOME TABLE Error: " + error);
+                    } else {
+                        eventEmitter.emit('create_main_home_table');
+                    }
+                });
+
+            eventEmitter.once('create_main_home_table', (function (_this) {
+                return function () {
+                    console.log('create_main_home_table:', 'Внимание! Создание главной таблицы под дома прошло успешно:', _this.bufferMySQL_DB, _this.buffer_main_tables.home);
+                    _this.record_in_log('finish create main home table', _this.bufferMySQL_DB, _this.buffer_main_tables.home, 0);
+                }
+            })(this));
+        };
+
         Distribution.prototype.create_all_home_tables = function () {
             //CREATE ALL STREET TABLES
             var i, j = 0, table_name;
@@ -1295,6 +1387,7 @@ router.get('/distribution', function (req, res, next) {
                     "`dbf_id` int(11) NOT NULL," +
                     "`region_id` int(11) NOT NULL," +
                     "`city_id` int(11) NOT NULL," +
+                    "`street_id` int(11) NOT NULL," +
                     "`name` varchar(80) NOT NULL DEFAULT ''," +
                     "`socr` varchar(20) NOT NULL DEFAULT ''," +
                     "`code` varchar(28) NOT NULL DEFAULT ''," +
@@ -1304,13 +1397,14 @@ router.get('/distribution', function (req, res, next) {
                     "`ocatd` varchar(21) NOT NULL DEFAULT ''," +
                     "PRIMARY KEY (`id`)," +
                     "KEY `dbf_id` (`dbf_id`)," +
+                    "KEY `region_id` (`region_id`)," +
                     "KEY `city_id` (`city_id`)," +
-                    "KEY `region_id` (`region_id`)" +
+                    "KEY `street_id` (`street_id`) " +
                     ") ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;",
                     [this.bufferMySQL_DB, table_name],
                     function (error, result) {
                         if (error !== null) {
-                            console.log("MySQL CREATE TABLE Error: " + error);
+                            console.log("MySQL CREATE ALL DOME TABLE Error: " + error);
                         } else {
                             j++;
                             if ((dataLength - 1) == j) {
