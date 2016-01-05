@@ -58,8 +58,8 @@ router.get('/distribution', function (req, res, next) {
             this.dbf_log_table_information = undefined;
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
-            this.stage = 9;
-            this.finish_stage = 10;
+            this.stage = 11;
+            this.finish_stage = 14;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
                 log: 'aa_record_time_log',
@@ -76,6 +76,8 @@ router.get('/distribution', function (req, res, next) {
                 street: '000_street',
                 home: '000_home'
             };
+            this.KLADR_API_DB = 'kladr_api';
+            this.KLADR_API_Tables = [];
             eventEmitter.setMaxListeners(50000);
             this.row = 0;
             this.query_limit = 25000;
@@ -86,6 +88,8 @@ router.get('/distribution', function (req, res, next) {
 
             this.buffer_city_table_information = [];
             this.buffer_home_table_information = [];
+
+            this.backup_api_db = '';
         }
 
 
@@ -118,7 +122,7 @@ router.get('/distribution', function (req, res, next) {
 
         };
 
-        Distribution.prototype.show_databases = function () {
+        Distribution.prototype.show_databases = function (event) {
             //SHOW DATABASES
             var data, dataLength;
             connection.query('SHOW DATABASES',
@@ -135,9 +139,15 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('save_show_databases', (function (_this) {
                 return function () {
                     _this.databases = data;
-                    console.log('show_databases:', 'Найденно баз: ' + dataLength);
-                    if (dataLength !== undefined) _this.find_database(_this.tableMySQL.name);
-                    else {
+                    console.log('show_databases:', 'Список баз данных обновлен! Найденно баз: ' + dataLength);
+                    if (event === 'nothing') {
+                        return false;
+                    } else if (event === 'show_and_next') {
+                        _this.stage++;
+                        _this.stage_controller();
+                    } else if (dataLength !== undefined) {
+                        _this.find_database(_this.tableMySQL.name);
+                    } else {
                         console.log('show_databases:', 'Внимание! Ни одной базы данных не найденно!');
                     }
                 }
@@ -173,7 +183,7 @@ router.get('/distribution', function (req, res, next) {
             }
         };
 
-        Distribution.prototype.create_database = function (name_database) {
+        Distribution.prototype.create_database = function (name_database, event) {
             //USE DATABASE
             connection.query('CREATE DATABASE IF NOT EXISTS ?? CHARACTER SET utf8 COLLATE utf8_general_ci;', name_database, function (error, result) {
                 if (error !== null) {
@@ -186,7 +196,10 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('create_database', (function (_this) {
                 return function () {
                     console.log('create_database:', 'Созданна новая база данных:', name_database);
-                    _this.show_databases();
+                    if (event === 'nothing') {
+                    } else{
+                        _this.show_databases();
+                    }
                 }
             })(this));
         };
@@ -244,15 +257,31 @@ router.get('/distribution', function (req, res, next) {
                         console.log('show_tables:', 'В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event:', event);
                         if (dataLength === 7) console.log('show_tables:', 'Число ' + dataLength + ' соответствует необходимому значению числа таблиц!');
                         else console.log('show_tables:', 'Внимание! ' + dataLength + ' таблиц может быть недостаточно для полного распределения данных!');
-                        if (event === 'update') {
+                        if (event === 'nothing') {
+                        }else if (event === 'show_and_next') {
+                            _this.stage++;
+                            _this.stage_controller();
+                        }else if (event === 'update') {
                             _this.validate_main_tables(_this.DBF_MySQL_DB);
                         }
 
                     } else if (database === _this.bufferMySQL_DB) {
                         _this.bufferMySQL_Tables = (dataLength > 0) ? data : [];
                         console.log('show_tables:', 'В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event:', event);
-                        if (event === 'update') {
+                        if (event === 'nothing') {
+                        }else if (event === 'show_and_next') {
+                            _this.stage++;
+                            _this.stage_controller();
+                        }else if (event === 'update') {
                             _this.validate_main_tables(_this.bufferMySQL_DB);
+                        }
+                    } else if (database === _this.KLADR_API_DB) {
+                        _this.KLADR_API_Tables = (dataLength > 0) ? data : [];
+                        console.log('show_tables:', 'В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event:', event);
+                        if (event === 'nothing') {
+                        }else if (event === 'show_and_next') {
+                            _this.stage++;
+                            _this.stage_controller();
                         }
                     }
                 }
@@ -538,6 +567,20 @@ router.get('/distribution', function (req, res, next) {
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Перенос данных по домам (Запись в главную таблицу домов производится паралельно, внутри)
                 return this.distribution_all_home_tables(0, (this.buffer_region_table_information.length - 1));
+            } else if ((this.stage === 11) && (this.stage <= this.finish_stage)) {
+                //Обновляем список таблиц в базе `kladr_api`
+                this.show_tables(this.KLADR_API_DB, 'nothing');
+                //Обновляем список таблиц в базе данных `kladr_buffer`
+                return this.show_databases('show_and_next');
+            } else if ((this.stage === 12) && (this.stage <= this.finish_stage)) {
+                //Обновляем список таблиц в базе `kladr_buffer`
+                return this.show_tables(this.bufferMySQL_DB, 'show_and_next');
+            } else if ((this.stage === 13) && (this.stage <= this.finish_stage)) {
+                //Проверяем существует ли база с именем kladr_api + текущий год + текущий месяц, например "kladr_api_2016_01", если да то удаляем создаем заново и делам бекап базы `kladr_api`
+                return this.drop_old_and_backup_api_db();
+            } else if ((this.stage === 14) && (this.stage <= this.finish_stage)) {
+                //Перемещаем все `kladr_buffer` таблицы в базу `kladr_api`
+                return this.distribution_buffer_db_in_api_db();
             }
 
             return this.close_connection();
@@ -1894,9 +1937,9 @@ router.get('/distribution', function (req, res, next) {
             var query_values = [];
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
-                    query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id,this.buffer_home_table_information[first_street_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
                 else
-                    query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id,this.buffer_home_table_information[first_street_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
             }
 
             //Записываем данные единым запросом
@@ -1935,9 +1978,9 @@ router.get('/distribution', function (req, res, next) {
             var query_values = [];
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
-                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id,this.buffer_home_table_information[first_street_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
                 else
-                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id ,data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
             }
 
             //Записываем данные единым запросом
@@ -1984,6 +2027,143 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
+        Distribution.prototype.drop_old_and_backup_api_db = function () {
+            //DROP OLD API DATABASES
+            var dataBasesLength = this.databases.length, i;
+            var dataLength = this.KLADR_API_Tables.length, keyObject, tableObjectKey;
+            var query_body, query_tail, query = '', main_array = [], query_values = [];
+
+            console.log('drop_old_and_backup_api_db:', 'Внимание! Начат процесс бекапа существующей базы API!');
+
+            if (dataLength < 1) {
+                console.log('drop_old_and_backup_api_db:', 'Внимание! База с API не содержит ни одной таблицы!');
+                this.stage++;
+                return this.stage_controller();
+            }
+
+            //Получение ключа объекта
+            for (keyObject in this.KLADR_API_Tables[0]) tableObjectKey = keyObject;
+
+            var year = new Date().getFullYear();
+            var month = new Date().getMonth() + 1;
+            if (month < 10) month = '0' + month;
+            this.backup_api_db = this.KLADR_API_DB + '_' + year + '_' + month;
+
+            eventEmitter.once('drop_old_and_backup_api_db', (function (_this) {
+                return function () {
+                    _this.create_database(_this.backup_api_db, 'nothing');
+
+                    //Получаем единую строку запроса
+                    query_body = "RENAME TABLE ??.?? TO ??.??";
+                    query_tail = "??.?? TO ??.??";
+                    if (dataLength === 1)
+                        query += query_body + ";";
+                    else {
+                        for (i = 0; i < dataLength; i++) {
+                            if (i === 0) {
+                                query += query_body;
+                            } else if ((dataLength - 1) === i) {
+                                query = query + ', ' + query_tail + ';';
+                            } else {
+                                query = query + ', ' + query_tail;
+                            }
+                        }
+                    }
+
+                    //Получаем единый массив запроса
+                    for (i = 0; i < dataLength; i++) {
+                        if (i === 0)
+                            query_values = main_array.concat(_this.KLADR_API_DB, _this.KLADR_API_Tables[i][tableObjectKey], _this.backup_api_db, _this.KLADR_API_Tables[i][tableObjectKey]);
+                        else
+                            query_values = query_values.concat(_this.KLADR_API_DB, _this.KLADR_API_Tables[i][tableObjectKey], _this.backup_api_db, _this.KLADR_API_Tables[i][tableObjectKey]);
+                    }
+
+                    //Переносим все таблицы единым запрососм
+                    connection.query(query, query_values,
+                        function (error, result) {
+                            if (error !== null) {
+                                console.log("MySQL drop old and backup api db Error: " + error);
+                            } else {
+                                console.log('Внимание! Backup ВСЕХ API ТАБЛИЦ ЗАВЕРШЕН!');
+                                return _this.show_databases('show_and_next');
+                            }
+                        });
+                }
+            })(this));
+
+            //Удаляем старый бекап базы за текущий месяц, если он существовал
+            for (i = 0; i < dataBasesLength; i++) {
+                if (this.backup_api_db === this.databases[i].Database) {
+                    this.drop_database(this.backup_api_db,'nothing');
+                    return eventEmitter.emit('drop_old_and_backup_api_db');
+                } else if (i === (dataBasesLength - 1)) {
+                    return eventEmitter.emit('drop_old_and_backup_api_db');
+                }
+            }
+
+        };
+
+        Distribution.prototype.distribution_buffer_db_in_api_db = function () {
+            //DISTRIBUTION BUFFER API
+            var dataLength = this.bufferMySQL_Tables.length, keyObject, tableObjectKey, i;
+            var query_body, query_tail, query = '', main_array = [], query_values = [];
+
+            console.log('distribution_buffer_db_in_api_db:', 'Внимание! НАЧАТ ПРОЦЕСС переноса базы buffer в базу API!');
+
+            if (dataLength < 1) {
+                console.log('distribution_buffer_db_in_api_db:', 'Внимание! База Buffer не содержит ни одной таблицы для переноса, ПРОЦЕСС ОСТАНОВЛЕН!');
+                this.stage++;
+                return this.stage_controller();
+            }
+
+            //Получение ключа объекта
+            for (keyObject in this.bufferMySQL_Tables[0]) tableObjectKey = keyObject;
+
+            //Получаем единую строку запроса
+            query_body = "RENAME TABLE ??.?? TO ??.??";
+            query_tail = "??.?? TO ??.??";
+            if (dataLength === 1)
+                query += query_body + ";";
+            else {
+                for (i = 0; i < dataLength; i++) {
+                    if (i === 0) {
+                        query += query_body;
+                    } else if ((dataLength - 1) === i) {
+                        query = query + ', ' + query_tail + ';';
+                    } else {
+                        query = query + ', ' + query_tail;
+                    }
+                }
+            }
+
+            //Получаем единый массив запроса
+
+            for (i = 0; i < dataLength; i++) {
+                if (i === 0)
+                    query_values = main_array.concat(this.bufferMySQL_DB, this.bufferMySQL_Tables[i][tableObjectKey], this.KLADR_API_DB, this.bufferMySQL_Tables[i][tableObjectKey]);
+                else
+                    query_values = query_values.concat(this.bufferMySQL_DB, this.bufferMySQL_Tables[i][tableObjectKey], this.KLADR_API_DB, this.bufferMySQL_Tables[i][tableObjectKey]);
+            }
+
+            //Переносим все таблицы единым запрососм
+            connection.query(query, query_values,
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL distribution buffer db in api db Error: " + error);
+                    } else {
+                        eventEmitter.emit('distribution_buffer_db_in_api_db');
+                    }
+                });
+
+            eventEmitter.once('distribution_buffer_db_in_api_db', (function (_this) {
+                return function () {
+                    console.log('Внимание! ПЕРЕНОС ИНФОРМАЦИИ ИЗ BUFFER В API ЗАВЕРШЕН!');
+                    _this.stage++;
+                    _this.stage_controller();
+                }
+            })(this));
+        };
+
         Distribution.prototype.drop_table = function (name_database, name_table) {
             //DROP DATABASES
             connection.query('DROP TABLE IF EXISTS ??.??',
@@ -2004,9 +2184,9 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
-        Distribution.prototype.drop_database = function (name_database) {
+        Distribution.prototype.drop_database = function (name_database,event) {
             //DROP DATABASES
-            connection.query('DROP DATABASE IF EXISTS ??`', name_database,
+            connection.query('DROP DATABASE IF EXISTS ??', name_database,
                 function (error, result) {
                     if (error !== null) {
                         console.log("MySQL DROP DATABASES Error: " + error);
@@ -2018,7 +2198,12 @@ router.get('/distribution', function (req, res, next) {
 
             eventEmitter.once('drop_database', (function (_this) {
                 return function () {
-                    console.log('База данных' + name_database + 'удалена!');
+                    console.log('drop_database:', 'База данных', name_database, 'удалена!');
+                    if(event === 'nothing'){
+                        return false;
+                    }else{
+                        _this.show_databases('nothing');
+                    }
                 }
             })(this));
         };
@@ -2038,6 +2223,7 @@ router.get('/distribution', function (req, res, next) {
     test.open_connection();
 
     res.send('Иди смотри)');
-});
+})
+;
 
 module.exports = router;
