@@ -49,6 +49,11 @@ router.get('/distribution', function (req, res, next) {
         __extends(Distribution, _super);
 
         function Distribution() {
+            this.MySQL_Global_Variables = '';
+            this.MySQL_Global_Variables_variable_name = 'Variable_name';
+            this.MySQL_Global_Variables_value = 'Value';
+            this.max_heap_table_size = 0;
+            this.heap_need = 4294967296; //4GB
             this.tableMySQL = parameters.DataBase.kladr_buffer;
             this.bufferMySQL_DB = parameters.DataBase.kladr_buffer.name;
             this.bufferMySQL_Tables = [];
@@ -58,8 +63,8 @@ router.get('/distribution', function (req, res, next) {
             this.dbf_log_table_information = undefined;
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
-            this.stage = 11;
-            this.finish_stage = 14;
+            this.stage = 15;
+            this.finish_stage = 16;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
                 log: 'aa_record_time_log',
@@ -116,9 +121,71 @@ router.get('/distribution', function (req, res, next) {
 
             eventEmitter.once('show_databases', (function (_this) {
                 return function () {
+                    _this.search_mysql_global_variables();
                     _this.show_databases();
                 }
             })(this));
+
+        };
+
+        Distribution.prototype.search_mysql_global_variables = function () {
+            //SEARCH_MySQL_Global_variables
+            var data;
+            connection.query('SHOW GLOBAL VARIABLES',
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL Search MySQL Global Variables Error: " + error);
+                    } else {
+                        data = result;
+                        eventEmitter.emit('search_mysql_global_variables');
+                    }
+                }
+            );
+
+            eventEmitter.once('search_mysql_global_variables', (function (_this) {
+                return function () {
+                    console.log('ПОЛУЧЕНЫ ЗНАЧЕНИЯ ГЛОБАЛЬНЫХ ПЕРЕМЕННЫХ MySQL');
+                    _this.MySQL_Global_Variables = data;
+                    //Поиск ключа `max heap table size`
+                    _this.search_mysql_global_values('max_heap_table_size');
+                }
+            })(this));
+        };
+
+        Distribution.prototype.search_mysql_global_values = function (variable) {
+            //SEARCH MYSQL GLOBAL VARIABLES
+            var dataLength = this.MySQL_Global_Variables.length;
+            var variableValue = undefined, i;
+
+            if (dataLength < 1) {
+                return console.log('search_max_heap_table_size', 'Внимание! MySQL_Global_Variables length', dataLength);
+            }
+
+            eventEmitter.once('search_mysql_global_values', (function (_this) {
+                return function () {
+                    if(variableValue != undefined){
+                        console.log('Найденна MySQL переменная:', variable, variableValue);
+                        if (variable === 'max_heap_table_size') {
+                            _this.max_heap_table_size = parseInt(variableValue, 10);
+                        } else {
+
+                        }
+                    }else{
+                        console.log('Глобальная Переменная MySQL НЕ найденна:', variable);
+                    }
+
+                }
+            })(this));
+
+            for (i = 0; i < dataLength; i++) {
+                //console.log(this.MySQL_Global_Variables[i][this.MySQL_Global_Variables_variable_name], '==', variable);
+                if (this.MySQL_Global_Variables[i][this.MySQL_Global_Variables_variable_name] == variable) {
+                    variableValue = this.MySQL_Global_Variables[i][this.MySQL_Global_Variables_value];
+                }
+                if(i === (dataLength -1)){
+                    return eventEmitter.emit('search_mysql_global_values');
+                }
+            }
 
         };
 
@@ -197,7 +264,7 @@ router.get('/distribution', function (req, res, next) {
                 return function () {
                     console.log('create_database:', 'Созданна новая база данных:', name_database);
                     if (event === 'nothing') {
-                    } else{
+                    } else {
                         _this.show_databases();
                     }
                 }
@@ -258,10 +325,10 @@ router.get('/distribution', function (req, res, next) {
                         if (dataLength === 7) console.log('show_tables:', 'Число ' + dataLength + ' соответствует необходимому значению числа таблиц!');
                         else console.log('show_tables:', 'Внимание! ' + dataLength + ' таблиц может быть недостаточно для полного распределения данных!');
                         if (event === 'nothing') {
-                        }else if (event === 'show_and_next') {
+                        } else if (event === 'show_and_next') {
                             _this.stage++;
                             _this.stage_controller();
-                        }else if (event === 'update') {
+                        } else if (event === 'update') {
                             _this.validate_main_tables(_this.DBF_MySQL_DB);
                         }
 
@@ -269,17 +336,17 @@ router.get('/distribution', function (req, res, next) {
                         _this.bufferMySQL_Tables = (dataLength > 0) ? data : [];
                         console.log('show_tables:', 'В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event:', event);
                         if (event === 'nothing') {
-                        }else if (event === 'show_and_next') {
+                        } else if (event === 'show_and_next') {
                             _this.stage++;
                             _this.stage_controller();
-                        }else if (event === 'update') {
+                        } else if (event === 'update') {
                             _this.validate_main_tables(_this.bufferMySQL_DB);
                         }
                     } else if (database === _this.KLADR_API_DB) {
                         _this.KLADR_API_Tables = (dataLength > 0) ? data : [];
                         console.log('show_tables:', 'В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event:', event);
                         if (event === 'nothing') {
-                        }else if (event === 'show_and_next') {
+                        } else if (event === 'show_and_next') {
                             _this.stage++;
                             _this.stage_controller();
                         }
@@ -581,6 +648,8 @@ router.get('/distribution', function (req, res, next) {
             } else if ((this.stage === 14) && (this.stage <= this.finish_stage)) {
                 //Перемещаем все `kladr_buffer` таблицы в базу `kladr_api`
                 return this.distribution_buffer_db_in_api_db();
+            } else if ((this.stage === 15) && (this.stage <= this.finish_stage)) {
+
             }
 
             return this.close_connection();
@@ -2094,7 +2163,7 @@ router.get('/distribution', function (req, res, next) {
             //Удаляем старый бекап базы за текущий месяц, если он существовал
             for (i = 0; i < dataBasesLength; i++) {
                 if (this.backup_api_db === this.databases[i].Database) {
-                    this.drop_database(this.backup_api_db,'nothing');
+                    this.drop_database(this.backup_api_db, 'nothing');
                     return eventEmitter.emit('drop_old_and_backup_api_db');
                 } else if (i === (dataBasesLength - 1)) {
                     return eventEmitter.emit('drop_old_and_backup_api_db');
@@ -2184,7 +2253,7 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
-        Distribution.prototype.drop_database = function (name_database,event) {
+        Distribution.prototype.drop_database = function (name_database, event) {
             //DROP DATABASES
             connection.query('DROP DATABASE IF EXISTS ??', name_database,
                 function (error, result) {
@@ -2199,9 +2268,9 @@ router.get('/distribution', function (req, res, next) {
             eventEmitter.once('drop_database', (function (_this) {
                 return function () {
                     console.log('drop_database:', 'База данных', name_database, 'удалена!');
-                    if(event === 'nothing'){
+                    if (event === 'nothing') {
                         return false;
-                    }else{
+                    } else {
                         _this.show_databases('nothing');
                     }
                 }
