@@ -53,7 +53,7 @@ router.get('/distribution', function (req, res, next) {
             this.MySQL_Global_Variables_variable_name = 'Variable_name';
             this.MySQL_Global_Variables_value = 'Value';
             this.max_heap_table_size = 0;
-            this.heap_need = 4294967296; //4GB
+            this.need_heap_size = 4294967296; //4GB
             this.tableMySQL = parameters.DataBase.kladr_buffer;
             this.bufferMySQL_DB = parameters.DataBase.kladr_buffer.name;
             this.bufferMySQL_Tables = [];
@@ -63,8 +63,8 @@ router.get('/distribution', function (req, res, next) {
             this.dbf_log_table_information = undefined;
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
-            this.stage = 15;
-            this.finish_stage = 16;
+            this.stage = 7;
+            this.finish_stage = 8;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
                 log: 'aa_record_time_log',
@@ -93,6 +93,23 @@ router.get('/distribution', function (req, res, next) {
 
             this.buffer_city_table_information = [];
             this.buffer_home_table_information = [];
+
+            this.MEMORY_DB_NAME = 'kladr_buffer_memory';
+            this.Buffer_MEMORY_MySQL_Tables = [];
+            this.memory_street_table_name = '000_street_dbf';
+            this.memory_doma_table_name = '000_doma_dbf';
+
+            this.stage_street_distribution = 7;
+            this.street_first_key = 0;
+            this.street_last_kay = 0;
+            this.street_start_row = 0;
+            this.street_finish_row = 0;
+
+            this.stage_home_distribution = 0;
+            this.home_first_key = 0;
+            this.home_last_kay = 0;
+            this.home_start_row = 0;
+            this.home_finish_row = 0;
 
             this.backup_api_db = '';
         }
@@ -163,14 +180,14 @@ router.get('/distribution', function (req, res, next) {
 
             eventEmitter.once('search_mysql_global_values', (function (_this) {
                 return function () {
-                    if(variableValue != undefined){
+                    if (variableValue != undefined) {
                         console.log('Найденна MySQL переменная:', variable, variableValue);
                         if (variable === 'max_heap_table_size') {
                             _this.max_heap_table_size = parseInt(variableValue, 10);
                         } else {
 
                         }
-                    }else{
+                    } else {
                         console.log('Глобальная Переменная MySQL НЕ найденна:', variable);
                     }
 
@@ -182,7 +199,7 @@ router.get('/distribution', function (req, res, next) {
                 if (this.MySQL_Global_Variables[i][this.MySQL_Global_Variables_variable_name] == variable) {
                     variableValue = this.MySQL_Global_Variables[i][this.MySQL_Global_Variables_value];
                 }
-                if(i === (dataLength -1)){
+                if (i === (dataLength - 1)) {
                     return eventEmitter.emit('search_mysql_global_values');
                 }
             }
@@ -264,6 +281,10 @@ router.get('/distribution', function (req, res, next) {
                 return function () {
                     console.log('create_database:', 'Созданна новая база данных:', name_database);
                     if (event === 'nothing') {
+                    }
+                    if (event === 'street_memory_distribution') {
+                        _this.stage_street_distribution++;
+                        return _this.stage_controller_all_street_memory_distribution();
                     } else {
                         _this.show_databases();
                     }
@@ -341,6 +362,14 @@ router.get('/distribution', function (req, res, next) {
                             _this.stage_controller();
                         } else if (event === 'update') {
                             _this.validate_main_tables(_this.bufferMySQL_DB);
+                        }
+                    } else if (database === _this.MEMORY_DB_NAME) {
+                        _this.Buffer_MEMORY_MySQL_Tables = (dataLength > 0) ? data : [];
+                        console.log('show_tables:', 'В базе: ' + database + ' найденно таблиц: ' + dataLength, 'event:', event);
+                        if (event === 'nothing') {
+                        } else if (event === 'street_memory_distribution') {
+                            _this.stage_street_distribution++;
+                            _this.stage_controller_all_street_memory_distribution();
                         }
                     } else if (database === _this.KLADR_API_DB) {
                         _this.KLADR_API_Tables = (dataLength > 0) ? data : [];
@@ -605,12 +634,20 @@ router.get('/distribution', function (req, res, next) {
                 this.truncate_table(this.buffer_main_tables.street);
                 //Очистка всего содержимого у таблиц улиц
                 return this.truncate_all_street_tables();
-            } else if ((this.stage === 7) && (this.stage <= this.finish_stage)) {
+            } else if ((this.stage === 7) && (this.stage <= this.finish_stage) &&
+                (this.max_heap_table_size < this.need_heap_size)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Перенос данных по улицам (Запись в главную таблицу улиц производится паралельно, внутри)
                 return this.distribution_all_street_tables(0, (this.buffer_region_table_information.length - 1));
+            } else if ((this.stage === 7) && (this.stage <= this.finish_stage) &&
+                (this.max_heap_table_size >= this.need_heap_size)) {
+                //По необходимости обновлям информацию
+                if (this.buffer_region_table_information.length < 1)
+                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+                //Перенос данных по улицам (Запись в главную таблицу улиц производится паралельно, внутри)
+                return this.stage_controller_all_street_memory_distribution(0, (this.buffer_region_table_information.length - 1));
                 //-----------------------------------------------------------//
             } else if ((this.stage === 8) && (this.stage <= this.finish_stage)) {
                 //По необходимости обновлям информацию
@@ -628,12 +665,21 @@ router.get('/distribution', function (req, res, next) {
                 this.truncate_table(this.buffer_main_tables.home);
                 //Очистка всего содержимого у таблиц домов
                 return this.truncate_all_home_tables();
-            } else if ((this.stage === 10) && (this.stage <= this.finish_stage)) {
+            } else if ((this.stage === 10) && (this.stage <= this.finish_stage) &&
+                (this.max_heap_table_size < this.need_heap_size)) {
                 //По необходимости обновлям информацию
                 if (this.buffer_region_table_information.length < 1)
                     return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
                 //Перенос данных по домам (Запись в главную таблицу домов производится паралельно, внутри)
                 return this.distribution_all_home_tables(0, (this.buffer_region_table_information.length - 1));
+            } else if ((this.stage === 10) && (this.stage <= this.finish_stage) &&
+                (this.max_heap_table_size >= this.need_heap_size)) {
+                //По необходимости обновлям информацию
+                if (this.buffer_region_table_information.length < 1)
+                    return this.select_all(this.bufferMySQL_DB, this.buffer_main_tables.regions);
+                //Перенос данных по домам (Запись в главную таблицу домов производится паралельно, внутри)
+                return this.stage_controller_all_home_memory_distribution(0, (this.buffer_region_table_information.length - 1));
+                //-----------------------------------------------------------//
             } else if ((this.stage === 11) && (this.stage <= this.finish_stage)) {
                 //Обновляем список таблиц в базе `kladr_api`
                 this.show_tables(this.KLADR_API_DB, 'nothing');
@@ -648,12 +694,11 @@ router.get('/distribution', function (req, res, next) {
             } else if ((this.stage === 14) && (this.stage <= this.finish_stage)) {
                 //Перемещаем все `kladr_buffer` таблицы в базу `kladr_api`
                 return this.distribution_buffer_db_in_api_db();
-            } else if ((this.stage === 15) && (this.stage <= this.finish_stage)) {
-
             }
 
             return this.close_connection();
         };
+
         //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
 
         Distribution.prototype.select_all = function (name_database, name_table) {
@@ -744,6 +789,8 @@ router.get('/distribution', function (req, res, next) {
                     }
                 });
         };
+
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//STAGE 1
 
         Distribution.prototype.distribution_region = function (start_row, finish_row) {
             //DISTRIBUTION REGION
@@ -957,6 +1004,8 @@ router.get('/distribution', function (req, res, next) {
                 }
             })(this));
         };
+
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//STAGE 2 - 4
 
         Distribution.prototype.create_main_city_table = function () {
             //CREATE MAIN CITY TABLE
@@ -1306,6 +1355,8 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//STAGE 5 - 7
+
         Distribution.prototype.create_main_street_table = function () {
             //CREATE MAIN STREET TABLE
             this.record_in_log('start create main street table', this.dbf_tables.street, this.buffer_main_tables.street, 0);
@@ -1516,7 +1567,7 @@ router.get('/distribution', function (req, res, next) {
                             first_key++;
                             console.log('get_street_count_information:', 'Внимание! Запрашиваю число городов,деревень... по следующему региону', region_number, first_key, last_kay, start_row, finish_row);
                             _this.record_in_log('not found street in city', _this.dbf_tables.street, city_code, (typeof row === 'number' ? row : ''));
-                            _this.record_in_log('finish record all city information container', _this.dbf_tables.kladr, _this.city_prefix);
+                            _this.record_in_log('finish record all city information container', _this.dbf_tables.kladr, _this.city_prefix, first_key);
                             _this.distribution_all_street_tables(first_key, last_kay, start_row, finish_row);
                         } else { //Если это последний город, село... в последнем регионе
                             console.log('get_street_count_information:', 'ПРОЦЕСС ЗАПИСИ ЗАВЕРШЕН.', region_number, first_key, last_kay, start_row, finish_row);
@@ -1699,6 +1750,557 @@ router.get('/distribution', function (req, res, next) {
                 }
             })(this));
         };
+
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//STAGE 7 - MEMORY
+
+        Distribution.prototype.stage_controller_all_street_memory_distribution = function (first_key, last_kay, start_row, finish_row) {
+            //DISTRIBUTION ALL STREET TABLES IN MEMORY
+            console.log('DISTRIBUTION ALL STREET TABLES IN MEMORY', 'STAGE:', this.stage, 'STREET_STAGE:', this.stage_street_distribution);
+
+            if (this.stage_street_distribution === 0) {
+                //Сохраняем параметры которые понадобятся в будущем
+                this.street_first_key = first_key;
+                this.street_last_kay = last_kay;
+                this.street_start_row = start_row;
+                this.street_finish_row = finish_row;
+                //Записываем в лог инфрмацию о начале распределения
+                this.record_in_log('start memory street distribution', this.dbf_tables.street, this.street_prefix, last_kay);
+                //Удаляем имеющуюся базу `kladr_buffer_memory`
+                return this.drop_database(this.MEMORY_DB_NAME, 'street_memory_distribution');
+            } else if (this.stage_street_distribution === 1) {
+                //Записываем в лог инфрмацию о создании базы `kladr_buffer_memory`
+                this.record_in_log('create kladr_buffer_memory db', this.MEMORY_DB_NAME, this.street_prefix, 1);
+                //Создаем базу `kladr_buffer_memory`
+                return this.create_database(this.MEMORY_DB_NAME, 'street_memory_distribution');
+            } else if (this.stage_street_distribution === 2) {
+                //Записываем в лог информацию о копировании таблицы street
+                this.record_in_log('copy dbf street table', this.dbf_tables.street, this.memory_street_table_name, 1);
+                //Копируем базу street
+                return this.copy_dbf_street_table_in_memory();
+            } else if (this.stage_street_distribution === 3) {
+                //Записываем в лог информацию о переносе данных
+                this.record_in_log('transfer all street tables', this.bufferMySQL_DB, this.street_prefix, 1);
+                //Переносим рабочие таблицы в `kladr_buffer_memory`
+                return this.transfer_all_street_tables_in_memory();
+            } else if (this.stage_street_distribution === 4) {
+                //Получаем список всех таблиц в `kladr_buffer_memory`
+                return this.show_tables(this.MEMORY_DB_NAME, 'street_memory_distribution');
+            } else if (this.stage_street_distribution === 5) {
+                //Записываем в лог информацию о смене engine
+                this.record_in_log('start charge engine on engine memory', this.bufferMySQL_DB, this.street_prefix, 1);
+                //Смена ENGIN вех таблиц базы `kladr_buffer_memory` ENGIN=MyISAM => ENGINE=MEMORY
+                return this.charge_engine_on_engine_for_all_memory_tables(0, (this.Buffer_MEMORY_MySQL_Tables.length - 1), 'MEMORY', 'street_memory_distribution');
+            } else if (this.stage_street_distribution === 6) {
+                //Осуществляем процесс распредленя данных
+                return this.distribution_all_street_tables_memory(this.street_first_key, this.street_last_kay, this.street_start_row, this.street_finish_row);
+
+            } else if (this.stage_street_distribution === 7) {
+                //Удаление таблицы `000_street_dbf`
+                this.drop_table(this.MEMORY_DB_NAME, this.memory_street_table_name);
+                //Смена ENGIN таблицы `000_street` базы `kladr_buffer_memory` ENGIN=MEMORY => ENGINE=MyISAM
+                return this.charge_engine_on_engine_for_one_memory_tables(this.buffer_main_tables.street, 'MyISAM', 'street_memory_distribution');
+            } else if (this.stage_street_distribution === 8) {
+                //Перенос всех таблиц из базы `kladr_buffer_memory` => `kladr_buffer`
+                return this.transfer_all_street_tables_from_memory_in_buffer();
+            }
+
+            this.stage++;
+            this.stage_controller();
+
+        };
+
+        Distribution.prototype.copy_dbf_street_table_in_memory = function () {
+            //COPY DBF STREET TABLE IN MEMORY
+            var bufferMySQL_DB = this.bufferMySQL_DB, street_table_name = this.buffer_main_tables.street;
+            connection.query('CREATE TABLE ??.?? LIKE ??.??;',
+                [this.MEMORY_DB_NAME, this.memory_street_table_name, this.DBF_MySQL_DB, this.dbf_tables.street],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL create street_dbf in memory  Error: " + error);
+                    } else {
+                        console.log('copy_dbf_street_table_in_memory:', 'Создание базы прошло успешно', bufferMySQL_DB, street_table_name)
+                    }
+                });
+
+            connection.query('INSERT INTO ??.?? SELECT * FROM ??.??;',
+                [this.MEMORY_DB_NAME, this.memory_street_table_name, this.DBF_MySQL_DB, this.dbf_tables.street],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL transfer data street_dbf in memory Error: " + error);
+                    } else {
+                        eventEmitter.emit('copy_dbf_street_table_in_memory');
+                    }
+                });
+
+            eventEmitter.once('copy_dbf_street_table_in_memory', (function (_this) {
+                return function () {
+                    console.log('copy_dbf_street_table_in_memory:', 'Перенос данных прошел успешно', bufferMySQL_DB, street_table_name);
+                    _this.stage_street_distribution++;
+                    _this.stage_controller_all_street_memory_distribution();
+                }
+            })(this));
+        };
+
+        Distribution.prototype.transfer_all_street_tables_in_memory = function () {
+            //TRANSFER ALL STREET TABLES IN MEMORY
+            var data = this.buffer_region_table_information;
+            var dataLength = this.buffer_region_table_information.length, i;
+            var query_body, query_tail, query = '';
+
+            console.log('transfer_all_street_tables_in_memory:', 'Внимание! НАЧАТ ПРОЦЕСС переноса таблиц базы `buffer` в базу `buffer_memory`!');
+
+            if (dataLength < 1) {
+                console.log('transfer_all_street_tables_in_memory:', 'Внимание! Переменная buffer_region_table_information не содержит ни одной записи, ПРОЦЕСС ОСТАНОВЛЕН!');
+                this.stage = 1000;
+                return this.stage_controller();
+            }
+
+            //Получаем единую строку запроса
+            query_body = "RENAME TABLE ??.?? TO ??.??";
+            query_tail = "??.?? TO ??.??";
+            if (dataLength === 1)
+                query += query_body + ";";
+            else {
+                for (i = 0; i < dataLength; i++) {
+                    if (i === 0) {
+                        query += query_body;
+                    } else if ((dataLength - 1) === i) {
+                        query = query + ', ' + query_tail + ';';
+                    } else {
+                        query = query + ', ' + query_tail;
+                    }
+                }
+            }
+
+            var main_array = [this.bufferMySQL_DB, this.buffer_main_tables.street, this.MEMORY_DB_NAME, this.buffer_main_tables.street];
+            var query_values = [];
+            //Получаем единый массив запроса
+            for (i = 0; i < dataLength; i++) {
+                if (i === 0)
+                    query_values = main_array.concat([this.bufferMySQL_DB, (data[i].number + this.street_prefix), this.MEMORY_DB_NAME, (data[i].number + this.street_prefix)]);
+                else
+                    query_values = query_values.concat([this.bufferMySQL_DB, (data[i].number + this.street_prefix), this.MEMORY_DB_NAME, (data[i].number + this.street_prefix)]);
+            }
+
+            //Переносим все таблицы единым запрососм
+            connection.query(query, query_values,
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL transfer all street tables in memory Error: " + error);
+                    } else {
+                        eventEmitter.emit('transfer_all_street_tables_in_memory');
+                    }
+                });
+
+            eventEmitter.once('transfer_all_street_tables_in_memory', (function (_this) {
+                return function () {
+                    console.log('transfer_all_street_tables_in_memory:', 'Внимание! Все `buffer`.`xxx_street` таблицы перенесены в `buffer_memory`!');
+                    _this.stage_street_distribution++;
+                    _this.stage_controller_all_street_memory_distribution();
+                }
+            })(this));
+        };
+
+        Distribution.prototype.charge_engine_on_engine_for_all_memory_tables = function (first_key, last_kay, ENGINE, event) {
+            //CHANGE ENGINE ON MEMORY
+            var keyObject, tableObjectKey, memory_table_name;
+            if ((first_key === undefined) || (last_kay === undefined) || (ENGINE === undefined)) {
+                console.log('charge_engine_on_engine_for_all_memory_tables:', 'Значения необходимые для работы метода отсутствуют', first_key, last_kay, ENGINE);
+            }
+
+            //Получение ключа объекта
+            for (keyObject in this.Buffer_MEMORY_MySQL_Tables[0]) tableObjectKey = keyObject;
+            //Получение названия таблицы
+            memory_table_name = this.Buffer_MEMORY_MySQL_Tables[first_key][tableObjectKey];
+
+            connection.query('ALTER TABLE  ??.?? ENGINE =' + ENGINE + ';',
+                [this.MEMORY_DB_NAME, memory_table_name],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL charge engine on engine memory for all street tables Error: " + error);
+                    } else {
+                        eventEmitter.emit('charge_engine_on_engine_for_all_memory_tables');
+                    }
+                });
+
+            eventEmitter.once('charge_engine_on_engine_for_all_memory_tables', (function (_this) {
+                return function () {
+                    console.log(first_key, last_kay, event);
+                    console.log('charge_engine_on_engine_for_all_memory_tables:', 'Смена ENGINE успешна', _this.MEMORY_DB_NAME, memory_table_name, 'ENGINE=' + ENGINE);
+                    if (event === 'nothing') {
+                    } else if (event === 'street_memory_distribution') {
+                        if (first_key < last_kay) {
+                            first_key++;
+                            _this.charge_engine_on_engine_for_all_memory_tables(first_key, last_kay, ENGINE, event);
+                        } else if (first_key === last_kay) {
+                            _this.stage_street_distribution++;
+                            _this.stage_controller_all_street_memory_distribution();
+                        }
+                    }
+                }
+            })(this));
+
+        };
+
+        Distribution.prototype.charge_engine_on_engine_for_one_memory_tables = function (table_name, ENGINE, event) {
+            //CHANGE ENGINE ON MEMORY
+            if ((table_name === undefined) || (ENGINE === undefined)) {
+                console.log('charge_engine_on_engine_for_all_memory_tables:', 'Значения необходимые для работы метода отсутствуют', table_name,  ENGINE);
+            }
+
+            connection.query('ALTER TABLE  ??.?? ENGINE =' + ENGINE + ';',
+                [this.MEMORY_DB_NAME, table_name],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL charge engine on engine for one memory tables Error: " + error);
+                    } else {
+                        eventEmitter.emit('charge_engine_on_engine_for_one_memory_tables');
+                    }
+                });
+
+            eventEmitter.once('charge_engine_on_engine_for_one_memory_tables', (function (_this) {
+                return function () {
+                    console.log('charge_engine_on_engine_for_one_memory_tables:', 'Смена ENGINE успешна', _this.MEMORY_DB_NAME, table_name, 'ENGINE=' + ENGINE);
+                    if (event === 'nothing') {
+                    } else if (event === 'street_memory_distribution') {
+                        _this.stage_street_distribution++;
+                        _this.stage_controller_all_street_memory_distribution();
+                    }
+                }
+            })(this));
+
+        };
+
+        Distribution.prototype.distribution_all_street_tables_memory = function (first_key, last_kay, start_row, finish_row) {
+            var city_data = [], cityDataLength = 0, first_city_key = 0;
+            var region_number = this.buffer_region_table_information[first_key].number;
+            var city_table_name = region_number + this.city_prefix;
+            var table_row = 0;
+            //Получаем общее число городов, деревень... в регионе
+            connection.query('SELECT * FROM ??.??', [this.bufferMySQL_DB, city_table_name],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL SELECT ALL CITY Error: " + error);
+                    } else {
+                        city_data = result;
+                        cityDataLength = result.length;
+                        eventEmitter.emit('distribution_all_street_tables_memory');
+                    }
+                });
+
+            eventEmitter.once('distribution_all_street_tables_memory', (function (_this) {
+                return function () {
+                    if (cityDataLength == 0) {//Если в регионе НЕТ городов, деревень...
+                        if (first_key < last_kay) {//Если это НЕ последний регион
+                            first_key++;
+                            console.log('distribution_all_street_tables_memory:', 'Внимание! В таблице', city_table_name, 'колличество городов', cityDataLength);
+                            console.log('distribution_all_street_tables_memory:', 'Произвожу запрос по следующему региону', first_key, last_kay);
+                            _this.record_in_log('empty city table', _this.bufferMySQL_DB, city_table_name, cityDataLength);
+                            _this.charge_engine_on_engine_for_one_memory_tables((_this.buffer_region_table_information[first_key-1].number + _this.street_prefix), 'MyISAM', 'nothing');
+                            _this.distribution_all_street_tables_memory(first_key, last_kay, start_row, finish_row);
+                        } else {//Если это последний регион
+                            console.log('distribution_all_street_tables_memory:', 'ПРОЦЕСС ЗАПИСИ ЗАВЕРШЕН.', region_number, first_key, last_kay, start_row, finish_row);
+                            _this.record_in_log('not found city in region', region_number, city_table_name, cityDataLength);
+                            _this.record_in_log('finish record all street information container', _this.dbf_tables.street, _this.street_prefix);
+                            _this.charge_engine_on_engine_for_one_memory_tables((_this.buffer_region_table_information[first_key].number + _this.street_prefix), 'MyISAM', 'nothing');
+                            _this.stage_street_distribution++;
+                            _this.stage_controller_all_street_memory_distribution();
+                        }
+                    } else {//Если в регионе ЕСТЬ города, деревени...
+                        console.log('distribution_all_street_tables_memory:', 'В таблице', city_table_name, 'колличество городов', cityDataLength);
+                        console.log('distribution_all_street_tables_memory:', 'Перехожу к запросу числа улиц по городу', first_key, last_kay);
+                        _this.buffer_city_table_information = city_data;
+                        _this.record_in_log('city table capacity', _this.bufferMySQL_DB, city_table_name, cityDataLength);
+                        _this.get_street_count_information_memory(first_key, last_kay, start_row, finish_row, region_number, first_city_key, (cityDataLength - 1), table_row);
+                    }
+                }
+            })(this));
+        };
+
+        Distribution.prototype.get_street_count_information_memory = function (first_key, last_kay, start_row, finish_row, region_number, first_city_key, last_city_key, table_row) {
+            var row = 0, first_row = 0, end_row = 0;
+            var city_name = this.buffer_city_table_information[first_city_key].name;
+            var city_code = this.buffer_city_table_information[first_city_key].code;
+            var table_name = region_number + this.street_prefix;
+            //Получаем общее колличество улиц по городу
+            connection.query("SELECT COUNT(*) " +
+                "FROM  ??.?? " +
+                "WHERE  `code` LIKE  ? " +
+                "ORDER BY  `code` ASC ;",
+                [this.MEMORY_DB_NAME, this.memory_street_table_name, city_code + '%'],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL GET STREET COUNT INFORMATION in MEMORY Error: " + error);
+                    } else {
+                        row = result[0]['COUNT(*)'];
+                        eventEmitter.emit('get_street_count_information_memory');
+                    }
+                });
+
+            eventEmitter.once('get_street_count_information_memory', (function (_this) {
+                return function () {
+                    console.log('get_street_count_information_memory:', 'регион/город/улиц', region_number, city_name, row);
+                    if (row < 1) { //Если по городу, деревне... нет ни одной улицы
+                        if (first_city_key < last_city_key) { //Если это НЕ последний город, село... в регионе
+                            first_city_key++;
+                            console.log('get_street_count_information_memory:', 'Внимание! Запрашиваю число улиц по следующему городу,деревне... ');
+                            console.log('get_street_count_information_memory:', 'region_number/first_city_key/last_city_key', region_number, first_city_key, last_city_key);
+                            _this.record_in_log('not found street in city', _this.dbf_tables.street, city_code, row);
+                            _this.get_street_count_information_memory(first_key, last_kay, start_row, finish_row, region_number, first_city_key, last_city_key, table_row);
+                        } else if (first_key < last_kay) { //Если это последний город, село... в НЕ последнем регионе
+                            first_key++;
+                            console.log('get_street_count_information_memory:', 'Внимание! Запрашиваю число городов,деревень... по следующему региону', region_number, first_key, last_kay, start_row, finish_row);
+                            _this.record_in_log('not found street in city', _this.dbf_tables.street, city_code, (typeof row === 'number' ? row : ''));
+                            _this.record_in_log('finish record all city information container', _this.dbf_tables.kladr, _this.city_prefix, first_key);
+                            _this.charge_engine_on_engine_for_one_memory_tables((_this.buffer_region_table_information[first_key-1].number + _this.street_prefix), 'MyISAM', 'nothing');
+                            _this.distribution_all_street_tables_memory(first_key, last_kay, start_row, finish_row);
+                        } else { //Если это последний город, село... в последнем регионе
+                            console.log('get_street_count_information_memory:', 'ПРОЦЕСС ЗАПИСИ ЗАВЕРШЕН.', region_number, first_key, last_kay, start_row, finish_row);
+                            _this.record_in_log('not found street in city', _this.dbf_tables.street, city_code, row);
+                            _this.record_in_log('finish record all street information container', _this.dbf_tables.street, _this.street_prefix);
+                            _this.stage_street_distribution++;
+                            _this.charge_engine_on_engine_for_one_memory_tables((_this.buffer_region_table_information[first_key].number + _this.street_prefix), 'MyISAM', 'nothing');
+                            _this.stage_controller_all_street_memory_distribution();
+                        }
+                    } else { //Если по городу, деревне... найденны улицы
+                        if ((start_row !== undefined) && (start_row < row) && (start_row !== finish_row)) {
+                            if ((finish_row !== undefined) && (finish_row <= row)) {
+                                first_row = start_row;
+                                end_row = finish_row;
+                            } else {
+                                first_row = start_row;
+                                end_row = row;
+                            }
+                        } else {
+                            first_row = 0;
+                            end_row = row;
+                        }
+                        _this.record_in_log('start record street in one city', _this.dbf_tables.street, table_name, end_row);
+                        _this.get_street_information_memory(start_row, finish_row, first_row, end_row, region_number, city_code, table_name, table_row, first_key, last_kay, first_city_key, last_city_key);
+                    }
+                }
+            })(this));
+        };
+
+        Distribution.prototype.get_street_information_memory = function (start_row, finish_row, first_row, end_row, region_number, city_code, table_name, table_row, first_key, last_kay, first_city_key, last_city_key) {
+            var data, dataLength, limit = 0;
+
+            //Определяем LIMIT для текущего захода
+            if ((end_row - first_row) <= this.query_limit) {
+                limit = (end_row - first_row);
+                console.log('get_street_information_memory:', 'Запрашиваю все строки:', limit);
+            } else if (((end_row - first_row) > this.query_limit) && ((end_row - first_row) <= (this.query_limit + this.query_limit_error))) {
+                limit = (end_row - first_row);
+                console.log('get_street_information_memory:', 'Запрашиваю строки c превышением лимита:', limit);
+            } else if ((end_row - first_row) > (this.query_limit + this.query_limit_error)) {
+                limit = this.query_limit;
+                console.log('get_street_information_memory:', 'Запрашиваю строки упершись в лимит:', limit);
+            }
+
+            connection.query("SELECT * " +
+                "FROM  ??.?? " +
+                "WHERE  `code` LIKE  ? " +
+                "ORDER BY  `code` ASC " +
+                "LIMIT ? , ?; ",
+                [this.MEMORY_DB_NAME, this.memory_street_table_name, city_code + '%', first_row, limit],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL get street information Error: " + error);
+                    } else {
+                        data = result;
+                        dataLength = result.length;
+                        eventEmitter.emit('get_street_information_memory');
+                    }
+                });
+
+            eventEmitter.once('get_street_information_memory', (function (_this) {
+                return function () {
+                    _this.record_in_log('get street information', _this.dbf_tables.street, table_name, end_row);
+                    _this.record_main_street_information_container_memory(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, table_row, first_key, first_city_key);
+                    _this.record_street_information_container_memory(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, table_row, first_key, last_kay, first_city_key, last_city_key, city_code);
+                }
+            })(this));
+        };
+
+        Distribution.prototype.record_main_street_information_container_memory = function (data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, table_row, first_key, first_city_key) {
+            //Получаем единую строку запроса
+            var query_body = "INSERT INTO ??.?? (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `street_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`) VALUES ( NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query_tail = "( NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query = '', i;
+            if (dataLength === 1)
+                query += query_body + ";";
+            else {
+                for (i = 0; i < dataLength; i++) {
+                    if (i === 0) {
+                        query += query_body;
+                    } else if ((dataLength - 1) === i) {
+                        query = query + ', ' + query_tail + ';';
+                    } else {
+                        query = query + ', ' + query_tail;
+                    }
+                }
+            }
+
+            //Получаем единый массив запроса
+            var main_array = [this.MEMORY_DB_NAME, this.buffer_main_tables.street];
+            var query_values = [];
+            for (i = 0; i < dataLength; i++) {
+                if (i === 0)
+                    query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id,
+                        this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                else
+                    query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].id,
+                        this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+            }
+
+            //Записываем данные единым запросом
+            connection.query(query, query_values,
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL insert main street table Error in memory: " + error);
+                    } else {
+                        first_row = first_row + dataLength;
+                        console.log('record_main_street_information_container_memory:', 'всего/записанно/контейнером :', end_row, first_row, dataLength);
+                    }
+                });
+        };
+
+        Distribution.prototype.record_street_information_container_memory = function (data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, table_row, first_key, last_kay, first_city_key, last_city_key, city_code) {
+            //Получаем единую строку запроса
+            var query_body = "INSERT INTO ??.?? (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query_tail = "( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query = '', i;
+            if (dataLength === 1)
+                query += query_body + ";";
+            else {
+                for (i = 0; i < dataLength; i++) {
+                    if (i === 0) {
+                        query += query_body;
+                    } else if ((dataLength - 1) === i) {
+                        query = query + ', ' + query_tail + ';';
+                    } else {
+                        query = query + ', ' + query_tail;
+                    }
+                }
+            }
+
+            //Получаем единый массив запроса
+            var main_array = [this.MEMORY_DB_NAME, table_name];
+            var query_values = [];
+            for (i = 0; i < dataLength; i++) {
+                if (i === 0)
+                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                else
+                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+            }
+
+            //Записываем данные единым запросом
+            connection.query(query, query_values,
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL INSERT all street tables in memory Error: " + error);
+                    } else {
+                        first_row = first_row + dataLength;
+                        table_row = table_row + dataLength;
+                        console.log('record_street_information_container_memory:', 'всего/записанно/контейнером :', end_row, first_row, dataLength);
+                        eventEmitter.emit('record_street_information_container_memory');
+                    }
+                });
+
+            eventEmitter.once('record_street_information_container_memory', (function (_this) {
+                return function () {
+                    if (first_row < end_row) {//Если это НЕ последняя улица в городе, деревне...
+                        console.log('record_street_information_container_memory:', 'Запрашиваю очередные улицы', _this.buffer_city_table_information[first_city_key].name, first_row, end_row);
+                        _this.get_street_information_memory(start_row, finish_row, first_row, end_row, region_number, city_code, table_name, table_row, first_key, last_kay, first_city_key, last_city_key)
+
+                    } else if ((first_row == end_row) && (first_city_key < last_city_key)) {//Если это последняя улица в городе, деревне... и этот город НЕ последний в регионе, области...
+                        first_city_key++;
+                        console.log('record_street_information_container_memory:', 'Запрашиваю данные по очередному городу', _this.buffer_city_table_information[first_city_key].name, first_row, end_row);
+
+                        _this.get_street_count_information_memory (first_key, last_kay, start_row, finish_row, region_number, first_city_key, last_city_key, table_row);
+
+                    } else if ((first_row == end_row) && (first_city_key == last_city_key) && (first_key < last_kay)) { //Если это последняя улица в городе, деревне... и этот город последний в регионе, области... но это НЕ последний регион в списке
+                        first_key++;
+                        console.log('record_street_information_container_memory:', 'Запрашиваю города по очередному региону', region_number, first_key, last_kay, start_row, finish_row);
+                        _this.record_in_log('finish record street one region', _this.dbf_tables.street, region_number, last_kay);
+                        _this.charge_engine_on_engine_for_one_memory_tables((_this.buffer_region_table_information[first_key-1].number + _this.street_prefix), 'MyISAM', 'nothing');
+                        _this.distribution_all_street_tables_memory(first_key, last_kay, start_row, finish_row);
+
+                    } else { //Если это последняя улица в городе, деревне... и этот город последний в регионе, области... и это последний регион в списке
+
+                        //console.log('(',first_row,' == ',end_row,') && (',first_city_key,' == ',last_city_key,') && (',first_key,' < ',last_kay,')');
+                        console.log('record_street_information_container_memory:', 'Перенос всей информации по улицам прошел успешно', first_key, last_kay, start_row, finish_row);
+                        _this.record_in_log('finish record street in city and region', _this.dbf_tables.kladr, table_name, end_row);
+                        _this.record_in_log('finish record all street information container', _this.dbf_tables.kladr, _this.city_prefix, end_row);
+                        _this.stage_street_distribution++;
+                        _this.charge_engine_on_engine_for_one_memory_tables((_this.buffer_region_table_information[first_key].number + _this.street_prefix), 'MyISAM', 'nothing');
+                        _this.stage_controller_all_street_memory_distribution();
+                    }
+                }
+            })(this));
+        };
+
+        Distribution.prototype.transfer_all_street_tables_from_memory_in_buffer = function () {
+            //TRANSFER ALL STREET TABLES FROM MEMORY IN BUFFER
+            var data = this.buffer_region_table_information;
+            var dataLength = this.buffer_region_table_information.length, i;
+            var query_body, query_tail, query = '';
+
+            console.log('transfer_all_street_tables_from_memory_in_buffer:', 'Внимание! НАЧАТ ПРОЦЕСС переноса таблиц базы `buffer_memory` в базу `buffer`!');
+
+            if (dataLength < 1) {
+                console.log('transfer_all_street_tables_from_memory_in_buffer:', 'Внимание! Переменная buffer_region_table_information не содержит ни одной записи, ПРОЦЕСС ОСТАНОВЛЕН!');
+                this.stage = 1000;
+                return this.stage_controller();
+            }
+
+            //Получаем единую строку запроса
+            query_body = "RENAME TABLE ??.?? TO ??.??";
+            query_tail = "??.?? TO ??.??";
+            if (dataLength === 1)
+                query += query_body + ";";
+            else {
+                for (i = 0; i < dataLength; i++) {
+                    if (i === 0) {
+                        query += query_body;
+                    } else if ((dataLength - 1) === i) {
+                        query = query + ', ' + query_tail + ';';
+                    } else {
+                        query = query + ', ' + query_tail;
+                    }
+                }
+            }
+
+            var main_array = [this.MEMORY_DB_NAME, this.buffer_main_tables.street, this.bufferMySQL_DB, this.buffer_main_tables.street];
+            var query_values = [];
+            //Получаем единый массив запроса
+            for (i = 0; i < dataLength; i++) {
+                if (i === 0)
+                    query_values = main_array.concat([this.MEMORY_DB_NAME, (data[i].number + this.street_prefix),this.bufferMySQL_DB , (data[i].number + this.street_prefix)]);
+                else
+                    query_values = query_values.concat([this.MEMORY_DB_NAME, (data[i].number + this.street_prefix),this.bufferMySQL_DB , (data[i].number + this.street_prefix)]);
+            }
+
+            //Переносим все таблицы единым запрососм
+            connection.query(query, query_values,
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL transfer all street_tables from_memory in buffer Error: " + error);
+                    } else {
+                        eventEmitter.emit('transfer_all_street_tables_from_memory_in_buffer');
+                    }
+                });
+
+            eventEmitter.once('transfer_all_street_tables_from_memory_in_buffer', (function (_this) {
+                return function () {
+                    console.log('transfer_all_street_tables_from_memory_in_buffer:', 'Внимание! Все `buffer_memory`.`xxx_street` таблицы перенесены в `buffer`!');
+                    _this.stage_street_distribution++;
+                    _this.stage_controller_all_street_memory_distribution();
+                }
+            })(this));
+        };
+
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//STAGE 8 - 10
 
         Distribution.prototype.create_main_home_table = function () {
             //CREATE MAIN HOME TABLE
@@ -2096,6 +2698,275 @@ router.get('/distribution', function (req, res, next) {
             })(this));
         };
 
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//STAGE 10 - MEMORY
+
+        Distribution.prototype.stage_controller_all_home_memory_distribution = function (first_key, last_kay, start_row, finish_row) {
+            //DISTRIBUTION ALL HOME TABLES
+            var street_data = [], streetDataLength = 0, first_street_key = 0;
+            var region_number = this.buffer_region_table_information[first_key].number;
+            var street_table_name = region_number + this.street_prefix;
+            var table_row = 0;
+            if (first_key === 0) {
+                console.log('ACTIVATE DISTRIBUTION_HOME', 'STAGE:', this.stage);
+                this.record_in_log('start distribution all home tables', this.dbf_tables.doma, this.home_prefix, last_kay);
+            }
+            //Получаем общее число улиц... в регионе
+            connection.query('SELECT * FROM ??.??', [this.bufferMySQL_DB, street_table_name],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL distribution all home tables Error: " + error);
+                    } else {
+                        street_data = result;
+                        streetDataLength = result.length;
+                        eventEmitter.emit('distribution_all_home_tables');
+                    }
+                });
+
+            eventEmitter.once('distribution_all_home_tables', (function (_this) {
+                return function () {
+                    if (streetDataLength == 0) {//Если в регионе НЕТ улиц
+                        if (first_key < last_kay) {//Если это НЕ последний регион
+                            first_key++;
+                            console.log('distribution_all_home_tables:', 'Внимание! В таблице', street_table_name, 'колличество улиц', streetDataLength);
+                            console.log('distribution_all_home_tables:', 'Произвожу запрос по следующему региону', first_key, last_kay);
+                            _this.record_in_log('empty street table', _this.bufferMySQL_DB, street_table_name, streetDataLength);
+                            _this.distribution_all_home_tables(first_key, last_kay, start_row, finish_row);
+                        } else {//Если это последний регион
+                            console.log('distribution_all_home_tables:', 'ПРОЦЕСС ЗАПИСИ ЗАВЕРШЕН.', region_number, first_key, last_kay, start_row, finish_row);
+                            _this.record_in_log('not found street in region', region_number, street_table_name, streetDataLength);
+                            _this.record_in_log('finish record all home information container', _this.dbf_tables.doma, _this.home_prefix);
+                            _this.stage++;
+                            _this.stage_controller();
+                        }
+                    } else {//Если в регионе ЕСТЬ улицы...
+                        console.log('distribution_all_home_tables:', 'В таблице', street_table_name, 'колличество улиц', streetDataLength);
+                        console.log('distribution_all_home_tables:', 'Перехожу к запросу числа домов по улице', first_key, last_kay);
+                        _this.buffer_home_table_information = street_data;
+                        _this.record_in_log('street table capacity', _this.bufferMySQL_DB, street_table_name, streetDataLength);
+                        _this.get_home_count_information(first_key, last_kay, start_row, finish_row, region_number, first_street_key, (streetDataLength - 1), table_row);
+                    }
+                }
+            })(this));
+        };
+
+        Distribution.prototype.get_home_count_information_memory = function (first_key, last_kay, start_row, finish_row, region_number, first_street_key, last_street_key, table_row) {
+            var row = 0, first_row = 0, end_row = 0;
+            var street_name = this.buffer_home_table_information[first_street_key].name;
+            var street_code = this.buffer_home_table_information[first_street_key].code;
+            var table_name = region_number + this.home_prefix;
+            //Получаем общее колличество улиц по городу
+            connection.query("SELECT COUNT(*) " +
+                "FROM  ??.?? " +
+                "WHERE  `code` LIKE  ? " +
+                "ORDER BY  `code` ASC ;",
+                [this.DBF_MySQL_DB, this.dbf_tables.doma, street_code + '%'],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL GET HOME COUNT INFORMATION Error: " + error);
+                    } else {
+                        row = result[0]['COUNT(*)'];
+                        eventEmitter.emit('get_home_count_information');
+                    }
+                });
+
+            eventEmitter.once('get_home_count_information', (function (_this) {
+                return function () {
+                    console.log('get_home_count_information:', 'регион/улица/домов', region_number, street_name, row);
+                    if (row < 1) { //Если по улице НЕТ ни одного дома
+                        if (first_street_key < last_street_key) { //Если это НЕ последняя улица в регионе
+                            first_street_key++;
+                            console.log('get_home_count_information:', 'Внимание! Запрашиваю число домов по следующей улице... ');
+                            console.log('get_home_count_information:', 'номр региона/номер улицы/всего улиц', region_number, first_street_key, last_street_key);
+                            _this.record_in_log('not found home in street', _this.dbf_tables.doma, street_code, row);
+                            _this.get_home_count_information(first_key, last_kay, start_row, finish_row, region_number, first_street_key, last_street_key, table_row);
+                        } else if (first_key < last_kay) { //Если это последяя улица в НЕ последнем регионе
+                            first_key++;
+                            console.log('get_home_count_information:', 'Внимание! Запрашиваю число улиц... по следующему региону', region_number, first_key, last_kay, start_row, finish_row);
+                            _this.record_in_log('not found home in street', _this.dbf_tables.doma, street_code, (typeof row === 'number' ? row : ''));
+                            _this.record_in_log('find street in next region', _this.dbf_tables.home, _this.city_prefix);
+                            _this.distribution_all_home_tables(first_key, last_kay, start_row, finish_row);
+                        } else { //Если это последняя улица в последнем регионе
+                            console.log('get_home_count_information:', 'ПРОЦЕСС ЗАПИСИ ЗАВЕРШЕН.', region_number, first_key, last_kay, start_row, finish_row);
+                            _this.record_in_log('not found home in street', _this.dbf_tables.doma, street_code, row);
+                            _this.record_in_log('finish record all home information container', _this.dbf_tables.doma, _this.home_prefix);
+                            _this.stage++;
+                            _this.stage_controller();
+                        }
+                    } else { //Если по улице найденны дома
+                        if ((start_row !== undefined) && (start_row < row) && (start_row !== finish_row)) {
+                            if ((finish_row !== undefined) && (finish_row <= row)) {
+                                first_row = start_row;
+                                end_row = finish_row;
+                            } else {
+                                first_row = start_row;
+                                end_row = row;
+                            }
+                        } else {
+                            first_row = 0;
+                            end_row = row;
+                        }
+                        _this.record_in_log('start record homes in one street', _this.dbf_tables.doma, table_name, end_row);
+                        _this.get_home_information(start_row, finish_row, first_row, end_row, region_number, street_code, table_name, table_row, first_key, last_kay, first_street_key, last_street_key);
+                    }
+                }
+            })(this));
+        };
+
+        Distribution.prototype.get_home_information_memory = function (start_row, finish_row, first_row, end_row, region_number, street_code, table_name, table_row, first_key, last_kay, first_street_key, last_street_key) {
+            var data, dataLength, limit = 0;
+
+            //Определяем LIMIT для текущего захода
+            if ((end_row - first_row) <= this.query_limit) {
+                limit = (end_row - first_row);
+                console.log('get_home_information:', 'Запрашиваю все строки:', limit);
+            } else if (((end_row - first_row) > this.query_limit) && ((end_row - first_row) <= (this.query_limit + this.query_limit_error))) {
+                limit = (end_row - first_row);
+                console.log('get_home_information:', 'Запрашиваю строки c превышением лимита:', limit);
+            } else if ((end_row - first_row) > (this.query_limit + this.query_limit_error)) {
+                limit = this.query_limit;
+                console.log('get_home_information:', 'Запрашиваю строки упершись в лимит:', limit);
+            }
+
+            connection.query("SELECT * " +
+                "FROM  ??.?? " +
+                "WHERE  `code` LIKE  ? " +
+                "ORDER BY  `code` ASC " +
+                "LIMIT ? , ?; ",
+                [this.DBF_MySQL_DB, this.dbf_tables.doma, street_code + '%', first_row, limit],
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL get home information Error: " + error);
+                    } else {
+                        data = result;
+                        dataLength = result.length;
+                        eventEmitter.emit('get_home_information');
+                    }
+                });
+            eventEmitter.once('get_home_information', (function (_this) {
+                return function () {
+                    _this.record_in_log('get home information', _this.dbf_tables.doma, table_name, end_row);
+                    _this.record_main_home_information_container(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, table_row, first_key, first_street_key);
+                    _this.record_home_information_container(data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, table_row, first_key, last_kay, first_street_key, last_street_key, street_code);
+                }
+            })(this));
+        };
+
+        Distribution.prototype.record_main_home_information_container_memory = function (data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, table_row, first_key, first_street_key) {
+            //Получаем единую строку запроса
+            var query_body = "INSERT INTO ??.?? (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `street_id`, `home_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`) VALUES ( NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query_tail = "( NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query = '', i;
+            if (dataLength === 1)
+                query += query_body + ";";
+            else {
+                for (i = 0; i < dataLength; i++) {
+                    if (i === 0) {
+                        query += query_body;
+                    } else if ((dataLength - 1) === i) {
+                        query = query + ', ' + query_tail + ';';
+                    } else {
+                        query = query + ', ' + query_tail;
+                    }
+                }
+            }
+
+            //Получаем единый массив запроса
+            var main_array = [this.bufferMySQL_DB, this.buffer_main_tables.home];
+            var query_values = [];
+            for (i = 0; i < dataLength; i++) {
+                if (i === 0)
+                    query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                else
+                    query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+            }
+
+            //Записываем данные единым запросом
+            connection.query(query, query_values,
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL insert main home table Error: " + error);
+                    } else {
+                        first_row = first_row + dataLength;
+                        console.log('record_main_home_information_container:', 'всего/записанно/контейнером :', end_row, first_row, dataLength);
+                    }
+                });
+        };
+
+        Distribution.prototype.record_home_information_container_memory = function (data, dataLength, start_row, finish_row, first_row, end_row, region_number, table_name, table_row, first_key, last_kay, first_street_key, last_street_key, street_code) {
+            //Получаем единую строку запроса
+            var query_body = "INSERT INTO ??.?? (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `street_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query_tail = "( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            var query = '', i;
+            if (dataLength === 1)
+                query += query_body + ";";
+            else {
+                for (i = 0; i < dataLength; i++) {
+                    if (i === 0) {
+                        query += query_body;
+                    } else if ((dataLength - 1) === i) {
+                        query = query + ', ' + query_tail + ';';
+                    } else {
+                        query = query + ', ' + query_tail;
+                    }
+                }
+            }
+
+            //Получаем единый массив запроса
+            var main_array = [this.bufferMySQL_DB, table_name];
+            var query_values = [];
+            for (i = 0; i < dataLength; i++) {
+                if (i === 0)
+                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                else
+                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+            }
+
+            //Записываем данные единым запросом
+            connection.query(query, query_values,
+                function (error, result) {
+                    if (error !== null) {
+                        console.log("MySQL INSERT all home tables Error: " + error);
+                    } else {
+                        first_row = first_row + dataLength;
+                        table_row = table_row + dataLength;
+                        console.log('record_home_information_container:', 'всего/записанно/контейнером :', end_row, first_row, dataLength);
+                        eventEmitter.emit('record_home_information_container');
+                    }
+                });
+
+            eventEmitter.once('record_home_information_container', (function (_this) {
+                return function () {
+                    if (first_row < end_row) {//Если это НЕ последний дом на улице
+                        console.log('record_home_information_container:', 'Запрашиваю очередные дома', _this.buffer_home_table_information[first_key].name, first_row, end_row);
+                        _this.get_home_information(start_row, finish_row, first_row, end_row, region_number, street_code, table_name, table_row, first_key, last_kay, first_street_key, last_street_key)
+
+                    } else if ((first_row == end_row) && (first_street_key < last_street_key)) {//Если это последний дом на улице... но этота улица НЕ последняя в регионе, области...
+                        first_street_key++;
+                        console.log('record_home_information_container:', 'Запрашиваю данные по очередной улице', _this.buffer_home_table_information[first_street_key].name, first_row, end_row);
+
+                        _this.get_home_count_information (first_key, last_kay, start_row, finish_row, region_number, first_street_key, last_street_key, table_row);
+
+                    } else if ((first_row == end_row) && (first_street_key == last_street_key) && (first_key < last_kay)) { //Если это последний дом на улице и этота улица последняя в регионе, области... но это НЕ последний регион в списке
+                        first_key++;
+                        console.log('record_home_information_container:', 'Запрашиваю улицы по очередному региону', region_number, first_key, last_kay, start_row, finish_row);
+                        _this.record_in_log('finish record homes one region', _this.dbf_tables.doma, region_number, last_kay);
+                        _this.distribution_all_home_tables(first_key, last_kay, start_row, finish_row);
+
+                    } else { //Если это последний дом на улице и этота улица последняя в регионе, области... но это последний регион в списке
+
+                        //console.log('(',first_row,' == ',end_row,') && (',first_street_key,' == ',last_street_key,') && (',first_key,' < ',last_kay,')');
+                        console.log('record_home_information_container:', 'Перенос всей информации по домам прошел успешно', first_key, last_kay, start_row, finish_row);
+                        _this.record_in_log('finish record homes in region', _this.dbf_tables.doma, table_name, end_row);
+                        _this.record_in_log('finish record all homes information container', _this.dbf_tables.doma, _this.home_prefix, end_row);
+                        _this.stage++;
+                        _this.stage_controller();
+                    }
+                }
+            })(this));
+        };
+
+        //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//STAGE 11 - 14
+
         Distribution.prototype.drop_old_and_backup_api_db = function () {
             //DROP OLD API DATABASES
             var dataBasesLength = this.databases.length, i;
@@ -2270,6 +3141,9 @@ router.get('/distribution', function (req, res, next) {
                     console.log('drop_database:', 'База данных', name_database, 'удалена!');
                     if (event === 'nothing') {
                         return false;
+                    } else if (event === 'street_memory_distribution') {
+                        _this.stage_street_distribution++;
+                        return _this.stage_controller_all_street_memory_distribution();
                     } else {
                         _this.show_databases('nothing');
                     }
