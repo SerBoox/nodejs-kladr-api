@@ -570,7 +570,7 @@ router.get('/distribution', function (req, res, next) {
             } else if ((this.stage === 11) && (this.stage <= this.finish_stage)) {
                 //Обновляем список таблиц в базе `kladr_api`
                 this.show_tables(this.KLADR_API_DB, 'nothing');
-                //Обновляем список таблиц в базе данных `kladr_buffer`
+                //Обновляем список баз данных
                 return this.show_databases('show_and_next');
             } else if ((this.stage === 12) && (this.stage <= this.finish_stage)) {
                 //Обновляем список таблиц в базе `kladr_buffer`
@@ -2223,7 +2223,6 @@ router.get('/distribution', function (req, res, next) {
     test.open_connection();
 
     res.send('Иди смотри)');
-})
-;
+});
 
 module.exports = router;
