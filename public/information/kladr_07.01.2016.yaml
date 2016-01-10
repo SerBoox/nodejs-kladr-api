@@ -1,0 +1,543 @@
+# Example YAML to get you started quickly.
+# Be aware that YAML has indentation based scoping.
+# Code completion support is available so start typing for available options.
+swagger: '2.0'
+
+# This is your document metadata
+info:
+  title: "Kladr RestAPI"
+  description: "КЛАДР - классификатор адресов России"
+  version: "0.1.0"
+# the domain of the service
+host: kladr.entirec.ru
+# array of all schemes that your API supports
+schemes:
+  - http
+# will be prefixed to all paths
+basePath: /api
+produces:
+  - application/json  
+# Describe your paths here
+paths:
+  # This is a path endpoint. Change it.
+  /region:
+    # This is a HTTP operation
+    get:
+      # Describe this verb here. Note: you can use markdown
+      description: |
+        Данный раздел предназначен для получения информации по `Республике`,`Краю`,`Области`,`Автономному Округу`,`Автономной области`.
+        В качестве основного параметра для поиска может быть исползованно имя `name` или номер `number`. Параметер `name` позволяет производить побуквенный поиск, начиная с первой буквы имени. Т.к. максимальный объем одного ответа от сревера ограничен числом в `50` регионов, введен дополнительный параметер `page` реализующий механизм пагинации. Для осуществления поиска должен быть введен хотя бы один из обязательных параметров.
+      # This is array of GET operation parameters:
+      parameters:
+        # An example parameter that is in query and is required
+        -
+          name: name
+          in: query
+          description: имя
+          required: true
+          type: string
+          format: string
+        -
+          name: number
+          in: query
+          description: номер
+          required: true
+          type: number
+          format: int
+        -
+          name: page
+          in: query
+          description: страница
+          required: false
+          type: number
+          format: int
+      # Expected responses for this operation:
+      responses:
+        # Response code
+        200:
+          description: Successful response
+          schema:
+            $ref: '#/definitions/Region'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+  /city:
+   # This is a HTTP operation
+    get:
+      # Describe this verb here. Note: you can use markdown
+      description: |
+        Данный раздел предназначен для получения информации по `Городу`,`Деревне`,`Поселок`,`Садовому некомерческому товариществу` и.т.д.
+        В качестве основного параметра для поиска может быть исползованно `id` или `name` имя города, а так же такие параметры как номер региона `region_number` или `region_id` id региона. Параметер `name` позволяет производить побуквенный поиск, начиная с первой буквы имени. Т.к. максимальный объем одного ответа от сревера ограничен числом в `50` городов, введен дополнительный параметер `page` реализующий механизм пагинации. Для осуществления поиска должен быть введен хотя бы один из обязательных параметров.
+      # This is array of GET operation parameters:
+      parameters:
+        # An example parameter that is in query and is required
+        -
+          name: id
+          in: query
+          description: id города
+          required: true
+          type: number
+          format: int
+        -
+          name: name
+          in: query
+          description: имя города
+          required: true
+          type: string
+        -
+          name: region_id
+          in: query
+          description: id региона
+          required: true
+          type: number
+          format: int
+        -
+          name: region_number
+          in: query
+          description: номер региона
+          required: true
+          type: number
+          format: int
+        -
+          name: page
+          in: query
+          description: страница
+          required: false
+          type: number
+          format: int
+      # Expected responses for this operation:
+      responses:
+        # Response code
+        200:
+          description: Successful response
+          # A schema describing your response object.
+          # Use JSON Schema format
+          schema:
+            $ref: '#/definitions/City'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'
+  /street:
+    # This is a HTTP operation
+    get:
+      # Describe this verb here. Note: you can use markdown
+      description: |
+        Данный раздел предназначен для получения информации по улицам. В качестве основного параметра для поиска может быть исползованно `id` или `name` имя улицы  ,дополнительно в качестве основных или уточняющих параметров можно использовать  номер региона `region_number` или `region_id` id региона или  `city_id` id города. Параметер `name` позволяет производить побуквенный поиск, начиная с первой буквы имени. Т.к. максимальный объем одного ответа от сревера ограничен числом в `50` городов, введен дополнительный параметер `page` реализующий механизм пагинации. Для осуществления поиска должен быть введен хотя бы один из обязательных параметров.
+      # This is array of GET operation parameters:
+      parameters:
+        # An example parameter that is in query and is required
+        -
+          name: id
+          in: query
+          description: id улицы
+          required: true
+          type: number
+          format: int
+        -
+          name: name
+          in: query
+          description: имя улицы
+          required: true
+          type: string
+        -
+          name: region_id
+          in: query
+          description: id региона
+          required: true
+          type: number
+          format: int
+        -
+          name: region_number
+          in: query
+          description: номер региона
+          required: true
+          type: number
+          format: int
+        -
+          name: city_id
+          in: query
+          description: id города
+          required: true
+          type: number
+          format: int
+        -
+          name: page
+          in: query
+          description: страница
+          required: false
+          type: number
+          format: int
+      # Expected responses for this operation:
+      responses:
+        # Response code
+        200:
+          description: Successful response
+          # A schema describing your response object.
+          # Use JSON Schema format
+          schema:
+            $ref: '#/definitions/Street'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'               
+  /home:
+    # This is a HTTP operation
+    get:
+      # Describe this verb here. Note: you can use markdown
+      description: |
+        Данный раздел предназначен для получения информации по домам. Для осуществления поиска должны быть указанны обязательные параметры `city_id` id города и `street_id` id улицы и `name`. Параметер `name` позволяет производить побуквенный поиск, т.е. поиск по наличию буквы или номера в строке. Так же для получения возможно получить результат по конктетному дому просто указав `id` дома. Т.к. максимальный объем одного ответа от сревера ограничен числом в `50` городов, введен дополнительный параметер `page` реализующий механизм пагинации.
+      # This is array of GET operation parameters:
+      parameters:
+        # An example parameter that is in query and is required
+        -
+          name: id
+          in: query
+          description: id города
+          required: true
+          type: number
+          format: int
+        -
+          name: name
+          in: query
+          description: имя города
+          required: true
+          type: string
+        -
+          name: city_id
+          in: query
+          description: id города
+          required: true
+          type: number
+          format: int
+        -
+          name: street_id
+          in: query
+          description: id улицы
+          required: true
+          type: number
+          format: int
+        -
+          name: page
+          in: query
+          description: страница
+          required: false
+          type: number
+          format: int
+      # Expected responses for this operation:
+      responses:
+        # Response code
+        200:
+          description: Successful response
+          # A schema describing your response object.
+          # Use JSON Schema format
+          schema:
+            $ref: '#/definitions/Home'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'               
+  /socr:
+    # This is a HTTP operation
+    get:
+      # Describe this verb here. Note: you can use markdown
+      description: |
+        Данный раздел предназнчен для получения информации по сокращениям используемым в API. Например `г` -> `Город`. Не один из параметров не являеться обязательным. Параметры `scname` и `socrname` дают возможность побуквенного поииска.
+      # This is array of GET operation parameters:
+      parameters:
+        # An example parameter that is in query and is required
+        -
+          name: id
+          in: query
+          description: id сокращения
+          required: false
+          type: number
+          format: int
+        -
+          name: scname
+          in: query
+          description: сокращение
+          required: false
+          type: string
+        -
+          name: socrname
+          in: query
+          description: cрасшифровка
+          required: false
+          type: string
+      # Expected responses for this operation:
+      responses:
+        # Response code
+        200:
+          description: Successful response
+          # A schema describing your response object.
+          # Use JSON Schema format
+          schema:
+            $ref: '#/definitions/Socr'
+        default:
+          description: Unexpected error
+          schema:
+            $ref: '#/definitions/Error'               
+
+definitions:
+  Region:
+    type: object
+    properties:
+        time:
+          type: integer
+          description: Время обработки запроса, ms
+          format: int
+        current_page:
+          type: integer
+          description: Номер текущей страницы
+          format: int
+        last_page:
+          type: integer
+          description: Номер последней страницы
+          format: int
+        regions:
+          type: array
+          items:
+            type: object
+            properties:
+                id:
+                  type: number
+                  description: id региона
+                  format: int
+                number:
+                  type: number
+                  description: номер региона
+                  format: int
+                name:
+                  type: string
+                  description: имя региона
+                socr:
+                  type: string
+                  description: сокращение
+                kladr_code:
+                  type: number
+                  description: номер в кладр
+                  format: int
+                index:
+                  type: number
+                  description: индекс
+                  format: int
+                gninmb:
+                  type: number
+                  description: номер налоговой инспекции
+                  format: int
+                ocatd:
+                  type: number
+                  description: классификатор административно-территориального деления
+                  format: int
+  City:
+    type: object
+    properties:
+        time:
+          type: integer
+          description: Время обработки запроса, ms
+          format: int
+        current_page:
+          type: integer
+          description: Номер текущей страницы
+          format: int
+        last_page:
+          type: integer
+          description: Номер последней страницы
+          format: int
+        cities:
+          type: array
+          items:
+            type: object
+            properties:
+                id:
+                  type: number
+                  description: id города
+                  format: int
+                region_number:
+                  type: number
+                  description: номер региона
+                  format: int
+                name:
+                  type: string
+                  description: имя города
+                socr:
+                  type: string
+                  description: сокращение
+                kladr_code:
+                  type: number
+                  description: номер в кладр
+                  format: int
+                index:
+                  type: number
+                  description: индекс
+                  format: int
+                gninmb:
+                  type: number
+                  description: номер налоговой инспекции
+                  format: int
+                ocatd:
+                  type: number
+                  description: классификатор административно-территориального деления
+                  format: int
+  Street:
+    type: object
+    properties:
+        time:
+          type: integer
+          description: Время обработки запроса, ms
+          format: int
+        current_page:
+          type: integer
+          description: Номер текущей страницы
+          format: int
+        last_page:
+          type: integer
+          description: Номер последней страницы
+          format: int
+        streets:
+          type: array
+          items:
+            type: object
+            properties:
+                id:
+                  type: number
+                  description: id улицы
+                  format: int
+                region_id:
+                  type: number
+                  description: id региона
+                  format: int
+                region_number:
+                  type: number
+                  description: номер региона
+                  format: int
+                city_id:
+                  type: number
+                  description: id города
+                  format: int
+                name:
+                  type: string
+                  description: имя улицы
+                socr:
+                  type: string
+                  description: сокращение
+                kladr_code:
+                  type: number
+                  description: номер в кладр
+                  format: int
+                index:
+                  type: number
+                  description: индекс
+                  format: int
+                gninmb:
+                  type: number
+                  description: номер налоговой инспекции
+                  format: int
+                ocatd:
+                  type: number
+                  description: классификатор административно-территориального деления
+                  format: int
+  Home:
+    type: object
+    properties:
+        time:
+          type: integer
+          description: Время обработки запроса, ms
+          format: int
+        current_page:
+          type: integer
+          description: Номер текущей страницы
+          format: int
+        last_page:
+          type: integer
+          description: Номер последней страницы
+          format: int
+        homes:
+          type: array
+          items:
+            type: object
+            properties:
+                id:
+                  type: number
+                  description: id дома
+                  format: int
+                region_id:
+                  type: number
+                  description: id региона
+                  format: int
+                region_number:
+                  type: number
+                  description: номер региона
+                  format: int
+                city_id:
+                  type: number
+                  description: id города
+                  format: int
+                street_id:
+                  type: number
+                  description: id города
+                  format: int
+                name:
+                  type: string
+                  description: название, например (двлд6к1,двлд8)
+                socr:
+                  type: string
+                  description: сокращение
+                kladr_code:
+                  type: number
+                  description: номер в кладр
+                  format: int
+                index:
+                  type: number
+                  description: индекс
+                  format: int
+                gninmb:
+                  type: number
+                  description: номер налоговой инспекции
+                  format: int
+                ocatd:
+                  type: number
+                  description: классификатор административно-территориального деления
+                  format: int
+  Socr:
+    type: object
+    properties:
+        time:
+          type: integer
+          description: Время обработки запроса, ms
+          format: int
+        current_page:
+          type: integer
+          description: Номер текущей страницы
+          format: int
+        last_page:
+          type: integer
+          description: Номер последней страницы
+          format: int
+        socr:
+          type: array
+          items:
+            type: object
+            properties:
+                id:
+                  type: number
+                  description: id сокращения
+                  format: int
+                scname:
+                  type: string
+                  description: сокращение
+                socrname:
+                  type: string
+                  description: расшифровка
+  Error:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int
+      message:
+        type: string
+      fields:
+        type: string  
