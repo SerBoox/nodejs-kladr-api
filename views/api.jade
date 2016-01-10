@@ -1,6 +1,6 @@
 extends layout
 
 block content
-  h1 Welcome 2 to #{title}
-  p 'Пожалуйста перейдите по адресу <a href='/api/import'>/api/import</a> для импорта таблиц из формата *.DBF в MySQL таблицу'
+  script.
+    document.location.href = 'http://'+ location.hostname +':'+ location.port +'/docs';
 
