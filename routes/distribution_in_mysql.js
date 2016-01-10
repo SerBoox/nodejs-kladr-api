@@ -805,12 +805,13 @@ router.get('/distribution', function (req, res, next) {
             connection.query("SELECT COUNT(*) " +
                 "FROM  ??.??" +
                 "WHERE (" +
-                "`socr` =  'Респ'" +
-                "OR  `socr` =  'край'" +
-                "OR  `socr` =  'обл'" +
-                "OR  `socr` =  'АО'" +
-                "OR  `socr` =  'Аобл')" +
-                "AND  `code` LIKE  '%0000000000%'" +
+                "`socr` =  'Респ' " +
+                "OR  `socr` =  'край' " +
+                "OR  `socr` =  'обл' " +
+                "OR  `socr` =  'АО' " +
+                "OR  `socr` =  'Аобл' " +
+                "OR  `socr` =  'г') " +
+                "AND  `code` LIKE  '%000000000%' " +
                 "ORDER BY  `code` ASC",
                 [this.DBF_MySQL_DB, this.dbf_tables.kladr],
                 function (error, result) {
@@ -889,8 +890,9 @@ router.get('/distribution', function (req, res, next) {
                 "OR  `socr` =  'край' " +
                 "OR  `socr` =  'обл' " +
                 "OR  `socr` =  'АО' " +
-                "OR  `socr` =  'Аобл') " +
-                "AND  `code` LIKE  '%0000000000%' " +
+                "OR  `socr` =  'Аобл' " +
+                "OR  `socr` =  'г') " +
+                "AND  `code` LIKE  '%000000000%' " +
                 "ORDER BY  `code` ASC " +
                 "LIMIT ? , ?; ",
                 [this.DBF_MySQL_DB, this.dbf_tables.kladr, row_now, limit],
@@ -3398,8 +3400,8 @@ router.get('/distribution', function (req, res, next) {
 
     })(eventEmitter);
 
-    var test = new Distribution();
-    test.open_connection();
+    var distribution = new Distribution();
+    distribution.open_connection();
 
     res.send('Иди смотри)');
 });

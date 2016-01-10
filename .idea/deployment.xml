@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="kladr.dev.entirec.ru">
+  <component name="PublishConfigData" serverName="kladr.dev.entirec.ru">
     <serverData>
       <paths name="advisor.stage.entirec.ru">
         <serverdata>
@@ -80,6 +80,5 @@
         </serverdata>
       </paths>
     </serverData>
-    <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>

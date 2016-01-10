@@ -19,4 +19,14 @@ router.get('/iconv', function (req, res, next) {
     res.send(data);
 });
 
+/* POST home page. */
+router.post('/region/number', function(req, res, next) {
+    res.send({
+        request: req.body,
+        method: req.method
+
+    });
+    console.log(req);
+});
+
 module.exports = router;
