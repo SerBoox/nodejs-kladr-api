@@ -1667,10 +1667,10 @@ router.get('/distribution', function (req, res, next) {
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
                     query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id,
-                        this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                        this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].dbf_id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
                 else
                     query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].id,
-                        this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                        this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].dbf_id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
             }
 
             //Записываем данные единым запросом
@@ -1709,9 +1709,9 @@ router.get('/distribution', function (req, res, next) {
             var query_values = [];
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
-                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].dbf_id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
                 else
-                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].dbf_id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
             }
 
             //Записываем данные единым запросом
@@ -2084,10 +2084,10 @@ router.get('/distribution', function (req, res, next) {
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
                     query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id,
-                        this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                        this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].dbf_id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
                 else
                     query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].id,
-                        this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                        this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].dbf_id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
             }
 
             //Записываем данные единым запросом
@@ -2126,9 +2126,9 @@ router.get('/distribution', function (req, res, next) {
             var query_values = [];
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
-                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].dbf_id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
                 else
-                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_city_table_information[first_city_key].dbf_id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
             }
 
             //Записываем данные единым запросом
@@ -2545,9 +2545,9 @@ router.get('/distribution', function (req, res, next) {
             var query_values = [];
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
-                    query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].dbf_id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
                 else
-                    query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].dbf_id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
             }
 
             //Записываем данные единым запросом
@@ -2586,9 +2586,9 @@ router.get('/distribution', function (req, res, next) {
             var query_values = [];
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
-                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].dbf_id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
                 else
-                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].dbf_id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
             }
 
             //Записываем данные единым запросом
@@ -2964,9 +2964,9 @@ router.get('/distribution', function (req, res, next) {
             var query_values = [];
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
-                    query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = main_array.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].dbf_id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
                 else
-                    query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = query_values.concat(data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].dbf_id, (i + 1 + table_row), data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
             }
 
             //Записываем данные единым запросом
@@ -3005,9 +3005,9 @@ router.get('/distribution', function (req, res, next) {
             var query_values = [];
             for (i = 0; i < dataLength; i++) {
                 if (i === 0)
-                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = main_array.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].dbf_id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
                 else
-                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
+                    query_values = query_values.concat((i + 1 + table_row), data[i].id, this.buffer_region_table_information[first_key].id, this.buffer_region_table_information[first_key].number, this.buffer_home_table_information[first_street_key].city_id, this.buffer_home_table_information[first_street_key].dbf_id, data[i].name, data[i].socr, data[i].code, data[i].index, data[i].gninmb, data[i].uno, data[i].ocatd);
             }
 
             //Записываем данные единым запросом
