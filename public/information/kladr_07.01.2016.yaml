@@ -654,6 +654,10 @@ definitions:
                   type: number
                   description: id города
                   format: int
+                region_id:
+                  type: number
+                  description: id региона
+                  format: int
                 region_number:
                   type: number
                   description: номер региона
@@ -682,6 +686,10 @@ definitions:
         id:
           type: number
           description: id города
+          format: int
+        region_id:
+          type: number
+          description: id региона
           format: int
         region_number:
           type: number
