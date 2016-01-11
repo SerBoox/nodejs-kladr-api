@@ -28,6 +28,15 @@ var home_prefix = '_home';
 
 var pageLimit = 50;
 
+router.get('/test', function (req, res, next) {
+
+
+    console.log(query);
+    console.log(parameters);
+
+    res.send(query);
+});
+
 router.get('/', function (req, res, next) {
     res.render('api', {title: 'Express'});
 });
@@ -800,23 +809,63 @@ router.get('/city/name', function (req, res, next) {
         };
 
         City_name.prototype.find_city_where_name = function (name_database, name_table) {
-            var data = [], dataLength, query, parameters, cities = [], response = {}, i, region_number = 0;
-            var name = (req.query.name == undefined) ? '%' : req.query.name + '%';
+            var data = [], dataLength, cities = [], response = {}, i, sendRegionNumber = 0, sendRegionNumberLength = 0;
             var start_time = new Date().getTime();
 
+            var name = (req.query.name == undefined) ? undefined : req.query.name + '%';
+            console.log('name=', name);
             var nameLength = (req.query.name == undefined) ? 0 : req.query.name.length;
+
+            var region_id = ((req.query.region_id !== undefined) && (req.query.region_id !== 0)) ? parseInt(req.query.region_id, 10) : undefined;
+            console.log('region_id=', region_id);
+            var region_number = ((req.query.region_number !== undefined) && (parseInt(req.query.region_number, 10) !== 0)) ? parseInt(req.query.region_number, 10) * 10 : undefined;
+            console.log('region_number=', region_number);
+
             var page = (parseInt(req.query.page, 10) > 0) ? parseInt(req.query.page, 10) : 0;
             var pageNumber = (page > 1) ? ((page - 1) * pageLimit) : 0;
 
-            if (nameLength > 0) {
-                query = "SELECT `dbf_id`,`region_number`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`" +
-                    " FROM  ??.?? WHERE `name` LIKE  ? LIMIT ? , ?";
-                parameters = [name_database, name_table, name, pageNumber, pageLimit];
-            } else {
-                query = "SELECT `dbf_id`,`region_number`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
-                    + "FROM  ??.?? LIMIT ? , ?";
-                parameters = [name_database, name_table, pageNumber, pageLimit];
+            var query = '';
+            var queryHeader = "SELECT `dbf_id`,`region_id`,`region_number`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd` FROM  ??.?? WHERE ";
+            var queryTail = " LIMIT ? , ?";
+            var parameters = [];
+            var parametersHeader = [name_database, name_table];
+            var parametersTail = [pageNumber, pageLimit];
+
+            query += queryHeader;
+            parameters = parameters.concat(parametersHeader);
+            if ((region_id !== undefined) && (region_number === undefined) && (name === undefined)) {
+                query += " `region_id` = ? ";
+                parameters = parameters.concat([region_id]);
+            } else if (region_id !== undefined) {
+                query += " `region_id` =  ? ";
+                parameters = parameters.concat([region_id]);
             }
+
+            if ((region_id === undefined) && (region_number !== undefined)) {
+                query += " `region_number` = ?";
+                parameters = parameters.concat([region_number]);
+            }else if ((region_id === undefined) && (region_number !== undefined)) {
+                query += "AND `region_number` = ? ";
+                parameters = parameters.concat([region_number]);
+            }
+
+            if ((region_id !== undefined) && (region_number === undefined) && (name !== undefined)) {
+                query += " `name` LIKE ? ";
+                parameters = parameters.concat([name]);
+            } else if (name !== undefined) {
+                query += " AND `name` LIKE ? ";
+                parameters = parameters.concat([name]);
+            }
+
+            if ((region_id === undefined) && (region_number === undefined) && (name === undefined)) {
+                query = "SELECT `dbf_id`,`region_id`,`region_number`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
+                    + "FROM  ??.?? ";
+            }
+            query += queryTail;
+            parameters = parameters.concat(parametersTail);
+
+            console.log(query);
+            console.log(parameters);
 
             connection.query(query, parameters,
                 function (error, result, fields) {
@@ -832,15 +881,17 @@ router.get('/city/name', function (req, res, next) {
                 }
             );
 
-
             eventEmitter.once('find_city_where_name', (function (_this) {
                 return function () {
 
                     for (i = 0; i < dataLength; i++) {
-                        region_number = (data[i].region_number.toString().slice(2, 3) == 0) ? data[i].region_number.toString().slice(0, 2) : data[i].region_number;
+                        sendRegionNumberLength = data[i].region_number.toString().length;
+                        sendRegionNumber = (data[i].region_number.toString().slice(sendRegionNumberLength - 1, sendRegionNumberLength) == 0) ? data[i].region_number.toString().slice(0, sendRegionNumberLength - 1) : data[i].region_number;
+
                         cities[i] = {
                             id: data[i].dbf_id,
-                            region_number: region_number,
+                            region_id: data[i].region_id,
+                            region_number: sendRegionNumber,
                             name: data[i].name,
                             socr: data[i].socr,
                             kladr_code: data[i].code,
@@ -944,7 +995,8 @@ router.get('/city/id', function (req, res, next) {
         };
 
         City_id.prototype.find_city_where_id = function (name_database, name_table) {
-            var data = [], dataLength, query, parameters, cities = [], response = {}, i, region_number = 0;
+            var data = [], dataLength, query, parameters, cities = [], response = {}, i;
+            var sendRegionNumber = 0, sendRegionNumberLength = 0 ;
             var parseId = parseInt(req.query.id, 10);
             var id = (parseId > 0) ? parseId : 0;
             var start_time = new Date().getTime();
@@ -981,10 +1033,11 @@ router.get('/city/id', function (req, res, next) {
                         response = data[0];
                     } else {
                         for (i = 0; i < dataLength; i++) {
-                            region_number = (data[i].region_number.toString().slice(2, 3) == 0) ? data[i].region_number.toString().slice(0, 2) : data[i].region_number;
+                            sendRegionNumberLength = data[i].region_number.toString().length;
+                            sendRegionNumber = (data[i].region_number.toString().slice(sendRegionNumberLength - 1, sendRegionNumberLength) == 0) ? data[i].region_number.toString().slice(0, sendRegionNumberLength - 1) : data[i].region_number;
                             cities[i] = {
                                 id: data[i].dbf_id,
-                                region_number: region_number,
+                                region_number: sendRegionNumber,
                                 name: data[i].name,
                                 socr: data[i].socr,
                                 kladr_code: data[i].code,
