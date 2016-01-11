@@ -63,8 +63,8 @@ router.get('/distribution', function (req, res, next) {
             this.dbf_log_table_information = undefined;
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
-            this.stage = 8;
-            this.finish_stage = 14;
+            this.stage = 0;
+            this.finish_stage = 77;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
                 log: 'aa_record_time_log',
@@ -1868,10 +1868,10 @@ router.get('/distribution', function (req, res, next) {
             if (dataLength === 1)
                 query += query_body + ";";
             else {
-                for (i = 0; i < dataLength; i++) {
+                for (i = 0; i <= dataLength; i++) {
                     if (i === 0) {
                         query += query_body;
-                    } else if ((dataLength - 1) === i) {
+                    } else if (dataLength === i) {
                         query = query + ', ' + query_tail + ';';
                     } else {
                         query = query + ', ' + query_tail;
@@ -2197,10 +2197,10 @@ router.get('/distribution', function (req, res, next) {
             if (dataLength === 1)
                 query += query_body + ";";
             else {
-                for (i = 0; i < dataLength; i++) {
+                for (i = 0; i <= dataLength; i++) {
                     if (i === 0) {
                         query += query_body;
-                    } else if ((dataLength - 1) === i) {
+                    } else if (dataLength === i) {
                         query = query + ', ' + query_tail + ';';
                     } else {
                         query = query + ', ' + query_tail;
@@ -2745,10 +2745,10 @@ router.get('/distribution', function (req, res, next) {
             if (dataLength === 1)
                 query += query_body + ";";
             else {
-                for (i = 0; i < dataLength; i++) {
+                for (i = 0; i <= dataLength; i++) {
                     if (i === 0) {
                         query += query_body;
-                    } else if ((dataLength - 1) === i) {
+                    } else if (dataLength === i) {
                         query = query + ', ' + query_tail + ';';
                     } else {
                         query = query + ', ' + query_tail;
@@ -3076,10 +3076,10 @@ router.get('/distribution', function (req, res, next) {
             if (dataLength === 1)
                 query += query_body + ";";
             else {
-                for (i = 0; i < dataLength; i++) {
+                for (i = 0; i <= dataLength; i++) {
                     if (i === 0) {
                         query += query_body;
-                    } else if ((dataLength - 1) === i) {
+                    } else if (dataLength === i) {
                         query = query + ', ' + query_tail + ';';
                     } else {
                         query = query + ', ' + query_tail;
