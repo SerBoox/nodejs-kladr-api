@@ -1146,7 +1146,7 @@ router.get('/street', function (req, res, next) {
 
         };
 
-        Street.prototype.find_all_street = function (name_database, name_table, street_prefix) {
+        Street.prototype.find_all_street = function (name_database, name_table, prefix) {
             var data = [], dataLength, query, parameters, streets = [], response = {}, i;
             var sendRegionNumber = 0, sendRegionNumberLength = 0;
             var start_time = new Date().getTime();
@@ -1224,7 +1224,7 @@ router.get('/street', function (req, res, next) {
 });
 
 router.get('/street/name', function (req, res, next) {
-    var City_name, connection,
+    var Street_name, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
             for (var key in parent) {
@@ -1238,27 +1238,27 @@ router.get('/street/name', function (req, res, next) {
             return child;
         };
 
-    City_name = (function (_super) {
-        __extends(City_name, _super);
+    Street_name = (function (_super) {
+        __extends(Street_name, _super);
 
-        function City_name() {
+        function Street_name() {
             this.tableMySQL = parameters.DataBase.kladr_api;
             this.API_MySQL_DB_Name = parameters.DataBase.kladr_api.name;
 
             this.stage = 0;
         }
 
-        City_name.prototype.query_controller = function () {
+        Street_name.prototype.query_controller = function () {
             if (this.stage === 0) {
                 return this.open_connection();
             } else if (this.stage === 1) {
-                return this.find_city_where_name(this.API_MySQL_DB_Name, api_main_tables.city);
+                return this.find_city_where_name(this.API_MySQL_DB_Name, api_main_tables.street, street_prefix);
             }
 
             this.close_connection();
         };
 
-        City_name.prototype.open_connection = function () {
+        Street_name.prototype.open_connection = function () {
             //Parameters MySQL connection
             connection = mysql.createConnection({
                 host: this.tableMySQL.host,
@@ -1288,7 +1288,7 @@ router.get('/street/name', function (req, res, next) {
 
         };
 
-        City_name.prototype.find_city_where_name = function (name_database, name_table) {
+        Street_name.prototype.find_street_where_name = function (name_database, name_table , prefix) {
             var data = [], dataLength, cities = [], response = {}, i, sendRegionNumber = 0, sendRegionNumberLength = 0;
             var start_time = new Date().getTime();
 
@@ -1350,18 +1350,18 @@ router.get('/street/name', function (req, res, next) {
             connection.query(query, parameters,
                 function (error, result, fields) {
                     if (error !== null) {
-                        console.log("MySQL find region where name Error: " + error);
+                        console.log("MySQL find street where name Error: " + error);
                     } else {
 
                         data = result;
                         //console.log(result);
                         dataLength = result.length;
-                        eventEmitter.emit('find_city_where_name');
+                        eventEmitter.emit('find_street_where_name');
                     }
                 }
             );
 
-            eventEmitter.once('find_city_where_name', (function (_this) {
+            eventEmitter.once('find_street_where_name', (function (_this) {
                 return function () {
 
                     for (i = 0; i < dataLength; i++) {
@@ -1394,19 +1394,19 @@ router.get('/street/name', function (req, res, next) {
             })(this));
         };
 
-        City_name.prototype.close_connection = function () {
+        Street_name.prototype.close_connection = function () {
             //SHOW DATABASES
             connection.end(function () {
                 console.log('CLOSE MYSQL CONNECTION');
             });
         };
 
-        return City_name;
+        return Street_name;
 
     })(eventEmitter);
 
-    var city_name = new City_name();
-    city_name.query_controller();
+    var street_name = new Street_name();
+    street_name.query_controller();
 });
 
 router.get('/street/id', function (req, res, next) {
@@ -1438,7 +1438,7 @@ router.get('/street/id', function (req, res, next) {
             if (this.stage === 0) {
                 return this.open_connection();
             } else if (this.stage === 1) {
-                return this.find_city_where_id(this.API_MySQL_DB_Name, api_main_tables.city);
+                return this.find_street_where_id(this.API_MySQL_DB_Name, api_main_tables.street, street_prefix);
             }
 
             this.close_connection();
@@ -1474,7 +1474,7 @@ router.get('/street/id', function (req, res, next) {
 
         };
 
-        Street_id.prototype.find_city_where_id = function (name_database, name_table) {
+        Street_id.prototype.find_street_where_id = function (name_database, name_table , prefix) {
             var data = [], dataLength, query, parameters, cities = [], response = {}, i;
             var sendRegionNumber = 0, sendRegionNumberLength = 0;
             var parseId = parseInt(req.query.id, 10);
