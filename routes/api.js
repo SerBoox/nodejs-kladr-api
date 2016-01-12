@@ -1566,7 +1566,7 @@ router.get('/street/id', function (req, res, next) {
 });
 
 router.get('/home', function (req, res, next) {
-    var Street, connection,
+    var Home, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
             for (var key in parent) {
@@ -1580,27 +1580,27 @@ router.get('/home', function (req, res, next) {
             return child;
         };
 
-    Street = (function (_super) {
-        __extends(Street, _super);
+    Home = (function (_super) {
+        __extends(Home, _super);
 
-        function Street() {
+        function Home() {
             this.tableMySQL = parameters.DataBase.kladr_api;
             this.API_MySQL_DB_Name = parameters.DataBase.kladr_api.name;
 
             this.stage = 0;
         }
 
-        Street.prototype.query_controller = function () {
+        Home.prototype.query_controller = function () {
             if (this.stage === 0) {
                 return this.open_connection();
             } else if (this.stage === 1) {
-                return this.find_all_street(this.API_MySQL_DB_Name, api_main_tables.street, street_prefix);
+                return this.find_all_street(this.API_MySQL_DB_Name, api_main_tables.home, home_prefix);
             }
 
             this.close_connection();
         };
 
-        Street.prototype.open_connection = function () {
+        Home.prototype.open_connection = function () {
             //Parameters MySQL connection
             connection = mysql.createConnection({
                 host: this.tableMySQL.host,
@@ -1630,7 +1630,7 @@ router.get('/home', function (req, res, next) {
 
         };
 
-        Street.prototype.find_all_street = function (name_database, name_table, prefix) {
+        Home.prototype.find_all_street = function (name_database, name_table, prefix) {
             var data = [], dataLength, query, parameters, streets = [], response = {}, i;
             var sendRegionNumber = 0, sendRegionNumberLength = 0;
             var start_time = new Date().getTime();
@@ -1638,7 +1638,7 @@ router.get('/home', function (req, res, next) {
             var page = (parseInt(req.query.page, 10) > 0) ? parseInt(req.query.page, 10) : 0;
             var pageNumber = (page > 1) ? ((page - 1) * pageLimit) : 0;
 
-            query = "SELECT `dbf_id`,`region_id`,`region_number`,`city_id`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
+            query = "SELECT `dbf_id`,`region_id`,`region_number`,`city_id`,`street_id`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
                 + "FROM  ??.?? LIMIT ? , ?";
             parameters = [name_database, name_table, pageNumber, pageLimit];
 
@@ -1646,19 +1646,17 @@ router.get('/home', function (req, res, next) {
             connection.query(query, parameters,
                 function (error, result, fields) {
                     if (error !== null) {
-                        console.log("MySQL find all street Error: " + error);
+                        console.log("MySQL find all home Error: " + error);
                     } else {
 
                         data = result;
-                        //console.log(result);
                         dataLength = result.length;
-                        eventEmitter.emit('find_all_street');
+                        eventEmitter.emit('find_all_home');
                     }
                 }
             );
 
-
-            eventEmitter.once('find_all_street', (function (_this) {
+            eventEmitter.once('find_all_home', (function (_this) {
                 return function () {
 
                     for (i = 0; i < dataLength; i++) {
@@ -1670,6 +1668,7 @@ router.get('/home', function (req, res, next) {
                             region_id: data[i].region_id,
                             region_number: parseInt(sendRegionNumber, 10),
                             city_id: data[i].city_id,
+                            street_id: data[i].street_id,
                             name: data[i].name,
                             socr: data[i].socr,
                             kladr_code: data[i].code,
@@ -1692,18 +1691,18 @@ router.get('/home', function (req, res, next) {
             })(this));
         };
 
-        Street.prototype.close_connection = function () {
+        Home.prototype.close_connection = function () {
             //SHOW DATABASES
             connection.end(function () {
                 console.log('CLOSE MYSQL CONNECTION');
             });
         };
 
-        return Street;
+        return Home;
 
     })(eventEmitter);
 
-    var street = new Street();
+    var street = new Home();
     street.query_controller();
 });
 
