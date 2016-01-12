@@ -29,12 +29,7 @@ var home_prefix = '_home';
 var pageLimit = 50;
 
 router.get('/test', function (req, res, next) {
-
-
-    console.log(query);
-    console.log(parameters);
-
-    res.send(query);
+    res.send(req.query);
 });
 
 router.get('/', function (req, res, next) {
@@ -125,7 +120,6 @@ router.get('/region', function (req, res, next) {
                     } else {
 
                         data = result;
-                        //console.log(result);
                         dataLength = result.length;
                         eventEmitter.emit('find_all_region');
                     }
@@ -268,7 +262,6 @@ router.get('/region/name', function (req, res, next) {
                     } else {
 
                         data = result;
-                        //console.log(result);
                         dataLength = result.length;
                         eventEmitter.emit('find_region_where_name');
                     }
@@ -410,7 +403,6 @@ router.get('/region/number', function (req, res, next) {
                         console.log("MySQL find region where number Error: " + error);
                     } else {
                         data = result;
-                        //console.log(result);
                         dataLength = result.length;
                         eventEmitter.emit('find_region_where_number');
                     }
@@ -689,7 +681,6 @@ router.get('/city', function (req, res, next) {
                     } else {
 
                         data = result;
-                        //console.log(result);
                         dataLength = result.length;
                         eventEmitter.emit('find_all_city');
                     }
@@ -815,13 +806,10 @@ router.get('/city/name', function (req, res, next) {
             var start_time = new Date().getTime();
 
             var name = (req.query.name == undefined) ? undefined : req.query.name + '%';
-            console.log('name=', name);
             var nameLength = (req.query.name == undefined) ? 0 : req.query.name.length;
 
             var region_id = ((req.query.region_id !== undefined) && (req.query.region_id !== 0)) ? parseInt(req.query.region_id, 10) : undefined;
-            console.log('region_id=', region_id);
             var region_number = ((req.query.region_number !== undefined) && (parseInt(req.query.region_number, 10) !== 0)) ? parseInt(req.query.region_number, 10) * 10 : undefined;
-            console.log('region_number=', region_number);
 
             var page = (parseInt(req.query.page, 10) > 0) ? parseInt(req.query.page, 10) : 0;
             var pageNumber = (page > 1) ? ((page - 1) * pageLimit) : 0;
@@ -866,9 +854,6 @@ router.get('/city/name', function (req, res, next) {
             query += queryTail;
             parameters = parameters.concat(parametersTail);
 
-            console.log(query);
-            console.log(parameters);
-
             connection.query(query, parameters,
                 function (error, result, fields) {
                     if (error !== null) {
@@ -876,7 +861,6 @@ router.get('/city/name', function (req, res, next) {
                     } else {
 
                         data = result;
-                        //console.log(result);
                         dataLength = result.length;
                         eventEmitter.emit('find_city_where_name');
                     }
@@ -1022,7 +1006,6 @@ router.get('/city/id', function (req, res, next) {
                         console.log("MySQL find city where id Error: " + error);
                     } else {
                         data = result;
-                        //console.log(result);
                         dataLength = result.length;
                         eventEmitter.emit('find_city_where_id');
                     }
@@ -1165,7 +1148,6 @@ router.get('/street', function (req, res, next) {
                     } else {
 
                         data = result;
-                        //console.log(result);
                         dataLength = result.length;
                         eventEmitter.emit('find_all_street');
                     }
@@ -1292,7 +1274,6 @@ router.get('/street/name', function (req, res, next) {
             var start_time = new Date().getTime();
 
             var name = (req.query.name == undefined) ? undefined : req.query.name + '%';
-            console.log('name=', name);
             var nameLength = (req.query.name == undefined) ? 0 : req.query.name.length;
 
             var region_id = ((req.query.region_id !== undefined) && (req.query.region_id !== 0)) ? parseInt(req.query.region_id, 10) : undefined;
@@ -1311,7 +1292,6 @@ router.get('/street/name', function (req, res, next) {
 
             query += queryHeader;
             parameters = parameters.concat(parametersHeader);
-            console.log('city_id', city_id);
             if (city_id !== undefined) {
                 query += " `city_id` = ? ";
                 parameters = parameters.concat([city_id]);
@@ -1348,9 +1328,6 @@ router.get('/street/name', function (req, res, next) {
             query += queryTail;
             parameters = parameters.concat(parametersTail);
 
-            console.log(query);
-            console.log(parameters);
-
             connection.query(query, parameters,
                 function (error, result, fields) {
                     if (error !== null) {
@@ -1358,7 +1335,6 @@ router.get('/street/name', function (req, res, next) {
                     } else {
 
                         data = result;
-                        //console.log(result);
                         dataLength = result.length;
                         eventEmitter.emit('find_street_where_name');
                     }
@@ -1629,7 +1605,7 @@ router.get('/home', function (req, res, next) {
         };
 
         Home.prototype.find_all_street = function (name_database, name_table, prefix) {
-            var data = [], dataLength, query, parameters, streets = [], response = {}, i;
+            var data = [], dataLength, query, parameters, homes = [], response = {}, i;
             var sendRegionNumber = 0, sendRegionNumberLength = 0;
             var start_time = new Date().getTime();
 
@@ -1661,7 +1637,7 @@ router.get('/home', function (req, res, next) {
                         sendRegionNumberLength = data[i].region_number.toString().length;
                         sendRegionNumber = (data[i].region_number.toString().slice(sendRegionNumberLength - 1, sendRegionNumberLength) == 0) ? data[i].region_number.toString().slice(0, sendRegionNumberLength - 1) : data[i].region_number;
 
-                        streets[i] = {
+                        homes[i] = {
                             id: data[i].dbf_id,
                             region_id: data[i].region_id,
                             region_number: parseInt(sendRegionNumber, 10),
@@ -1679,7 +1655,7 @@ router.get('/home', function (req, res, next) {
                     response = {
                         time: new Date().getTime() - start_time,
                         page: (page == 0) ? 1 : page,
-                        streets: streets
+                        homes: homes
                     };
 
                     res.send(response);
@@ -1705,7 +1681,7 @@ router.get('/home', function (req, res, next) {
 });
 
 router.get('/home/name', function (req, res, next) {
-    var Street_name, connection,
+    var Home_name, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
             for (var key in parent) {
@@ -1719,27 +1695,27 @@ router.get('/home/name', function (req, res, next) {
             return child;
         };
 
-    Street_name = (function (_super) {
-        __extends(Street_name, _super);
+    Home_name = (function (_super) {
+        __extends(Home_name, _super);
 
-        function Street_name() {
+        function Home_name() {
             this.tableMySQL = parameters.DataBase.kladr_api;
             this.API_MySQL_DB_Name = parameters.DataBase.kladr_api.name;
 
             this.stage = 0;
         }
 
-        Street_name.prototype.query_controller = function () {
+        Home_name.prototype.query_controller = function () {
             if (this.stage === 0) {
                 return this.open_connection();
             } else if (this.stage === 1) {
-                return this.find_street_where_name(this.API_MySQL_DB_Name, api_main_tables.street, street_prefix);
+                return this.find_home_where_name(this.API_MySQL_DB_Name, api_main_tables.home, home_prefix);
             }
 
             this.close_connection();
         };
 
-        Street_name.prototype.open_connection = function () {
+        Home_name.prototype.open_connection = function () {
             //Parameters MySQL connection
             connection = mysql.createConnection({
                 host: this.tableMySQL.host,
@@ -1769,23 +1745,23 @@ router.get('/home/name', function (req, res, next) {
 
         };
 
-        Street_name.prototype.find_street_where_name = function (name_database, name_table , prefix) {
-            var data = [], dataLength, cities = [], response = {}, i, sendRegionNumber = 0, sendRegionNumberLength = 0;
+        Home_name.prototype.find_home_where_name = function (name_database, name_table , prefix) {
+            var data = [], dataLength, homes = [], response = {}, i, sendRegionNumber = 0, sendRegionNumberLength = 0;
             var start_time = new Date().getTime();
 
-            var name = (req.query.name == undefined) ? undefined : req.query.name + '%';
-            console.log('name=', name);
+            var name = (req.query.name == undefined) ? undefined : '%' + req.query.name + '%';
             var nameLength = (req.query.name == undefined) ? 0 : req.query.name.length;
 
             var region_id = ((req.query.region_id !== undefined) && (req.query.region_id !== 0)) ? parseInt(req.query.region_id, 10) : undefined;
             var city_id = ((req.query.city_id !== undefined) && (req.query.city_id !== 0)) ? parseInt(req.query.city_id, 10) : undefined;
+            var street_id = ((req.query.street_id !== undefined) && (req.query.street_id !== 0)) ? parseInt(req.query.street_id, 10) : undefined;
             var region_number = ((req.query.region_number !== undefined) && (parseInt(req.query.region_number, 10) !== 0)) ? parseInt(req.query.region_number, 10) * 10 : undefined;
 
             var page = (parseInt(req.query.page, 10) > 0) ? parseInt(req.query.page, 10) : 0;
             var pageNumber = (page > 1) ? ((page - 1) * pageLimit) : 0;
 
             var query = '';
-            var queryHeader = "SELECT `dbf_id`,`region_id`,`region_number`,`city_id`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`  FROM  ??.?? WHERE ";
+            var queryHeader = "SELECT `dbf_id`,`region_id`,`region_number`,`city_id`,`street_id`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`  FROM  ??.?? WHERE ";
             var queryTail = " LIMIT ? , ?";
             var parameters = [];
             var parametersHeader = [name_database, name_table];
@@ -1793,72 +1769,52 @@ router.get('/home/name', function (req, res, next) {
 
             query += queryHeader;
             parameters = parameters.concat(parametersHeader);
-            console.log('city_id', city_id);
-            if (city_id !== undefined) {
-                query += " `city_id` = ? ";
-                parameters = parameters.concat([city_id]);
-            }
+            if((city_id !== undefined) || (street_id !== undefined)){
+                if (city_id !== undefined) {
+                    query += " `city_id` = ? ";
+                    parameters = parameters.concat([city_id]);
+                }else if(street_id !== undefined){
+                    query += " `street_id` = ? ";
+                    parameters = parameters.concat([street_id]);
+                }
 
-            if ((city_id === undefined) && (region_id !== undefined)) {
-                query += " `region_id` = ? ";
-                parameters = parameters.concat([region_id]);
-            } else if ((region_id !== undefined) && (city_id !== undefined)) {
-                query += "AND `region_id` =  ? ";
-                parameters = parameters.concat([region_id]);
-            }
-
-            if ((city_id === undefined) && (region_id === undefined) && (region_number !== undefined)) {
-                query += " `region_number` = ?";
-                parameters = parameters.concat([region_number]);
-            } else if (region_number !== undefined) {
-                query += "AND `region_number` = ? ";
-                parameters = parameters.concat([region_number]);
-            }
-
-            if ((region_id === undefined) && (region_number === undefined) && (name !== undefined)) {
-                query += " `name` LIKE ? ";
-                parameters = parameters.concat([name]);
-            } else if (name !== undefined) {
-                query += " AND `name` LIKE ? ";
-                parameters = parameters.concat([name]);
-            }
-
-            if ((city_id === undefined) && (region_id === undefined) && (region_number === undefined) && (name === undefined)) {
-                query = "SELECT `dbf_id`,`region_id`,`region_number`,`city_id`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
+                if (name !== undefined) {
+                    query += "AND `name` LIKE ? ";
+                    parameters = parameters.concat([name]);
+                }
+            }else if ((city_id === undefined) && (region_id === undefined) && (region_number === undefined) && (name === undefined)) {
+                query = "SELECT `dbf_id`,`region_id`,`region_number`,`city_id`,`street_id`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
                     + "FROM  ??.?? ";
             }
             query += queryTail;
             parameters = parameters.concat(parametersTail);
 
-            console.log(query);
-            console.log(parameters);
-
             connection.query(query, parameters,
                 function (error, result, fields) {
                     if (error !== null) {
-                        console.log("MySQL find street where name Error: " + error);
+                        console.log("MySQL find home where name Error: " + error);
                     } else {
 
                         data = result;
-                        //console.log(result);
                         dataLength = result.length;
-                        eventEmitter.emit('find_street_where_name');
+                        eventEmitter.emit('find_home_where_name');
                     }
                 }
             );
 
-            eventEmitter.once('find_street_where_name', (function (_this) {
+            eventEmitter.once('find_home_where_name', (function (_this) {
                 return function () {
 
                     for (i = 0; i < dataLength; i++) {
                         sendRegionNumberLength = data[i].region_number.toString().length;
                         sendRegionNumber = (data[i].region_number.toString().slice(sendRegionNumberLength - 1, sendRegionNumberLength) == 0) ? data[i].region_number.toString().slice(0, sendRegionNumberLength - 1) : data[i].region_number;
 
-                        cities[i] = {
+                        homes[i] = {
                             id: data[i].dbf_id,
                             region_id: data[i].region_id,
                             region_number: parseInt(sendRegionNumber, 10),
                             city_id: data[i].city_id,
+                            street_id: data[i].street_id,
                             name: data[i].name,
                             socr: data[i].socr,
                             kladr_code: data[i].code,
@@ -1871,7 +1827,7 @@ router.get('/home/name', function (req, res, next) {
                     response = {
                         time: new Date().getTime() - start_time,
                         page: (page == 0) ? 1 : page,
-                        cities: cities
+                        homes: homes
                     };
 
                     res.send(response);
@@ -1881,19 +1837,19 @@ router.get('/home/name', function (req, res, next) {
             })(this));
         };
 
-        Street_name.prototype.close_connection = function () {
+        Home_name.prototype.close_connection = function () {
             //SHOW DATABASES
             connection.end(function () {
                 console.log('CLOSE MYSQL CONNECTION');
             });
         };
 
-        return Street_name;
+        return Home_name;
 
     })(eventEmitter);
 
-    var street_name = new Street_name();
-    street_name.query_controller();
+    var home_name = new Home_name();
+    home_name.query_controller();
 });
 
 router.get('/home/id', function (req, res, next) {
@@ -1987,7 +1943,6 @@ router.get('/home/id', function (req, res, next) {
                         console.log("MySQL find home where id Error: " + error);
                     } else {
                         data = result;
-                        //console.log(result);
                         dataLength = result.length;
                         eventEmitter.emit('find_home_where_id');
                     }
@@ -2149,9 +2104,6 @@ router.get('/socr', function (req, res, next) {
 
             query += queryTail;
             parameters = parameters.concat(parametersTail);
-
-            console.log(query);
-            console.log(parameters);
 
             connection.query(query, parameters,
                 function (error, result, fields) {
