@@ -1782,7 +1782,7 @@ router.get('/home/name', function (req, res, next) {
                     query += "AND `name` LIKE ? ";
                     parameters = parameters.concat([name]);
                 }
-            }else if ((city_id === undefined) && (region_id === undefined) && (region_number === undefined) && (name === undefined)) {
+            }else {
                 query = "SELECT `dbf_id`,`region_id`,`region_number`,`city_id`,`street_id`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
                     + "FROM  ??.?? ";
             }
