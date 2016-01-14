@@ -18,23 +18,6 @@ router.get('/test', function (req, res, next) {
         var MySQLDate = '2016-01-02 13:32:27';
         var query = req.query.query;
 
-        var i;
-        var queryString_1 = "2,2ка,18стр1,121_в,166к2,27_бстр1,86_а/1,5/1";
-        var queryString_2 = "двлд237,влд290,влд11стрв,влд47ка,двлд4_б/1,двлд4_б,двлд2кв/8,стр6,стр6а";
-        var queryString_3 = "сооружение10,сооружение59_К,15сооружение15,влд191сооружение191,влд13Асооружение13А,влд2Бсооружениемодул,Н(1-63),Ч(62-164),71литера,1литерА,двлд101литерб,19стр19,9/4стр9/4,4астр4а,7Жстр7Ж";
-
-        var queryArray = queryString_3.split(',');
-        var queryArrayLength = queryArray.length;
-
-        var requestArray = [];
-
-        for (i = 0; i < queryArrayLength; i++) {
-            requestArray[i] = {
-                socrname: cutHomeName(queryArray[i]),
-                name: queryArray[i]
-            }
-        }
-
         res.send((requestArray !== undefined) ? requestArray : 'Там какая то ошибка(');
     }
 );
@@ -82,7 +65,7 @@ router.get('/distribution', function (req, res, next) {
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
             this.stage = 11;
-            this.finish_stage = 14;
+            this.finish_stage = 77;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
                 log: 'aa_record_time_log',
@@ -131,12 +114,6 @@ router.get('/distribution', function (req, res, next) {
             this.home_last_kay = 0;
             this.home_start_row = 0;
             this.home_finish_row = 0;
-
-            this.stage_home_parse_distribution = 0;
-            this.home_parse_first_key = 0;
-            this.home_parse_last_kay = 0;
-            this.home_parse_start_row = 0;
-            this.home_parse_finish_row = 0;
 
             this.backup_api_db = '';
         }
