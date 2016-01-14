@@ -3370,14 +3370,11 @@ router.get('/distribution', function (req, res, next) {
             var data = [], dataLength = 0, i = 0, j = 0, k = row;
             var name = '', nameArray = [], nameArrayLength = 0;
 
-            var query_limit = 1000;
-            var query_limit_error = 1000;
-
             //Определяем LIMIT для текущего захода
             if ((end_row - row) <= this.query_limit) {
                 limit = (end_row - row);
                 console.log('get_home_parse_information:', 'ПОЛУЧАЮ ВСЕ СТРОКИ:', limit);
-            } else if (((end_row - row) > this.query_limit) && ((end_row - row) <= (this.query_limit + query_limit_error))) {
+            } else if (((end_row - row) > this.query_limit) && ((end_row - row) <= (this.query_limit + this.query_limit_error))) {
                 limit = (end_row - row);
                 console.log('get_home_parse_information:', 'ПОЛУЧАЮ СТРОКИ С ПРЕВЫШЕНИЕМ ЛИМИТА:', limit);
             } else if ((end_row - row) > (this.query_limit + this.query_limit_error)) {
@@ -3525,7 +3522,7 @@ router.get('/distribution', function (req, res, next) {
 
             eventEmitter.once('record_home_parse_information_container', (function (_this) {
                 return function () {
-                    if (row < end_row) {//Если это НЕ последний дом в регионе
+                    if (row < end_row) {//Если это НЕ последние дома в регионе
                         console.log('record_home_parse_information_container:', 'Запись пакета домов прошла успешно', first_key, last_kay, start_row, finish_row);
                         _this.record_in_log('finish record batch homes in region', region_number + _this.home_prefix, table_name, end_row);
                         _this.get_home_parse_information(first_key, last_kay, start_row, finish_row, no_parse_row, no_parse_end_row, row, end_row);
@@ -3685,7 +3682,6 @@ router.get('/distribution', function (req, res, next) {
                 }
             })(this));
         };
-
 
         //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//OTHER METHODS
 
