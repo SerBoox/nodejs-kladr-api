@@ -1,0 +1,103 @@
+CREATE TABLE IF NOT EXISTS `example` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `dbf_id` int(11) NOT NULL,
+  `city_id` int(11) NOT NULL,
+  `name` varchar(80) NOT NULL DEFAULT '',
+  `socr` varchar(20) NOT NULL DEFAULT '',
+  `code` varchar(28) NOT NULL DEFAULT '',
+  `index` varchar(16) NOT NULL DEFAULT '',
+  `gninmb` varchar(14) NOT NULL DEFAULT '',
+  `uno` varchar(14) NOT NULL DEFAULT '',
+  `ocatd` varchar(21) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `city_id` (`city_id`),
+  KEY `dbf_id` (`dbf_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+#1) IP STATISTIC TABLES
+CREATE TABLE IF NOT EXISTS `ip_statistics` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `ip` varchar(70) NOT NULL DEFAULT '',
+  `url` varchar(70) NOT NULL DEFAULT '',
+  `query` varchar(400) NOT NULL DEFAULT '',
+  `date_time` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+#2) API USE STATISTIC TABLES
+CREATE TABLE IF NOT EXISTS `api_use_statistics` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `api_route` int(11) NOT NULL,
+  `use_sum` int(11) NOT NULL,
+  `last_use` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+#3) TIME STATISTIC TABLES
+CREATE TABLE IF NOT EXISTS `time_statistics` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `year` int(11) NOT NULL,
+  `month` int(11) NOT NULL,
+  `day` int(11) NOT NULL,
+  `hour` int(11) NOT NULL,
+  `query_summ` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+#4) REGION STATISTIC TABLES
+CREATE TABLE IF NOT EXISTS `region_statistics` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `region_number` int(11) NOT NULL,
+  `region_socr` varchar(14) NOT NULL DEFAULT '',
+  `region_name` varchar(70) NOT NULL DEFAULT '',
+  `query_summ` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+#5) CITY STATISTIC TABLES
+CREATE TABLE IF NOT EXISTS `city_statistics` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `region_number` int(11) NOT NULL,
+  `city_socr` varchar(14) NOT NULL DEFAULT '',
+  `city_name` varchar(70) NOT NULL DEFAULT '',
+  `query_summ` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+#6) STREET STATISTIC TABLES
+CREATE TABLE IF NOT EXISTS `street_statistics` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `region_number` int(11) NOT NULL,
+  `city_name` varchar(70) NOT NULL DEFAULT '',
+  `street_socr` varchar(14) NOT NULL DEFAULT '',
+  `street_name` varchar(14) NOT NULL DEFAULT '',
+  `query_summ` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+#7) HOME STATISTIC TABLES
+CREATE TABLE IF NOT EXISTS `home_statistics` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `region_number` int(11) NOT NULL,
+  `city_name` varchar(70) NOT NULL DEFAULT '',
+  `street_name` varchar(14) NOT NULL DEFAULT '',
+  `socrname` varchar(28) NOT NULL DEFAULT '',
+  `socr` varchar(14) NOT NULL DEFAULT '',
+  `name` varchar(70) NOT NULL DEFAULT '',
+  `query_summ` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+#6) HOME STATISTIC TABLES
+CREATE TABLE IF NOT EXISTS `home_statistics` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `region_number` int(11) NOT NULL,
+  `city_name` varchar(70) NOT NULL DEFAULT '',
+  `street_name` varchar(14) NOT NULL DEFAULT '',
+  `socrname` varchar(28) NOT NULL DEFAULT '',
+  `socr` varchar(14) NOT NULL DEFAULT '',
+  `name` varchar(70) NOT NULL DEFAULT '',
+  `query_summ` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+

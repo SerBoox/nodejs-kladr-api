@@ -29,7 +29,10 @@ var home_prefix = '_home';
 var pageLimit = 50;
 
 router.get('/test', function (req, res, next) {
-    res.send(req.query);
+    var ip = req.connection.remoteAddress;
+    console.log(req.connection);
+    var query = req.query;
+    res.send(ip);
 });
 
 router.get('/', function (req, res, next) {
