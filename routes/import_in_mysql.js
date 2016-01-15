@@ -103,6 +103,7 @@ router.get('/import', function (req, res, next) {
 });
 
 function parseDBFDocument(tableDBF, rowsNumder, callback) {
+
     dbfParser = new ParserDBF(tableDBF.path + tableDBF.file, tableDBF.charset, rowsNumder);
 
     dbfParser.on('head', function (head) {

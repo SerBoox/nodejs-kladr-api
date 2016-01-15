@@ -6,6 +6,7 @@ var merge = require('merge'), original, cloned;
 var mysql = require('mysql');
 var parameters = require('../config/parameters.json');
 var getMySQLObject = require('../controllers/getMySQLObject.js');
+Statiscics = require('../controllers/Statistics.js');
 var async = require('async');
 var Promise = require('promise');
 var dateFormat = require('dateformat');
@@ -29,17 +30,23 @@ var home_prefix = '_home';
 var pageLimit = 50;
 
 router.get('/test', function (req, res, next) {
-    var ip = req.connection.remoteAddress;
-    console.log(req.connection);
-    var query = req.query;
-    res.send(ip);
+
+    res.send('Иди смотри)');
 });
 
 router.get('/', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     res.render('api', {title: 'Express'});
 });
 
 router.get('/region', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var Region, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -175,6 +182,10 @@ router.get('/region', function (req, res, next) {
 });
 
 router.get('/region/name', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var Region_name, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -317,6 +328,10 @@ router.get('/region/name', function (req, res, next) {
 });
 
 router.get('/region/number', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var Region_number, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -457,6 +472,10 @@ router.get('/region/number', function (req, res, next) {
 });
 
 router.get('/region/id', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var Region_id, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -600,6 +619,10 @@ router.get('/region/id', function (req, res, next) {
 });
 
 router.get('/city', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var City, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -740,6 +763,10 @@ router.get('/city', function (req, res, next) {
 });
 
 router.get('/city/name', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var City_name, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -919,6 +946,10 @@ router.get('/city/name', function (req, res, next) {
 });
 
 router.get('/city/id', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var City_id, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -1067,6 +1098,10 @@ router.get('/city/id', function (req, res, next) {
 });
 
 router.get('/street', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var Street, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -1208,6 +1243,10 @@ router.get('/street', function (req, res, next) {
 });
 
 router.get('/street/name', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var Street_name, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -1394,6 +1433,10 @@ router.get('/street/name', function (req, res, next) {
 });
 
 router.get('/street/id', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var Street_id, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -1543,6 +1586,10 @@ router.get('/street/id', function (req, res, next) {
 });
 
 router.get('/home', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var Home, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -1684,6 +1731,10 @@ router.get('/home', function (req, res, next) {
 });
 
 router.get('/home/name', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var Home_name, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -1856,6 +1907,10 @@ router.get('/home/name', function (req, res, next) {
 });
 
 router.get('/home/id', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var Home_id, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
@@ -2005,6 +2060,10 @@ router.get('/home/id', function (req, res, next) {
 });
 
 router.get('/socr', function (req, res, next) {
+
+    var API_STATISTICS = new Statiscics(req.connection.remoteAddress,req.res.req.originalUrl,JSON.stringify(req.query));
+    API_STATISTICS.statistics_controller();
+
     var Socr, connection,
         __hasProp = {}.hasOwnProperty,
         __extends = function (child, parent) {
