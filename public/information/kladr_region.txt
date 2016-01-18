@@ -1,0 +1,207 @@
+SHOW DATABASES;
+
+USE `kladr_buffer`
+
+CREATE DATABASE IF NOT EXISTS `kladr_buffer` CHARACTER SET utf8 COLLATE utf8_general_ci;
+
+DROP DATABASE IF EXISTS `kladr_buffer`
+
+CREATE TABLE IF NOT EXISTS `aa_record_time_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `event_id` int(11) NOT NULL,
+  `event` varchar(35) NOT NULL DEFAULT '',
+  `dbf_table_name` varchar(35) NOT NULL DEFAULT '',
+  `table_name` varchar(35) NOT NULL DEFAULT '',
+  `rows` int(11) NOT NULL,
+  `date_time` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+CREATE TABLE IF NOT EXISTS `region` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `number` varchar(5) NOT NULL DEFAULT '',
+  `name` varchar(80) NOT NULL DEFAULT '',
+  `socr` varchar(20) NOT NULL DEFAULT '',
+  `code` varchar(25) NOT NULL DEFAULT '',
+  `index` varchar(16) NOT NULL DEFAULT '',
+  `gninmb` varchar(14) NOT NULL DEFAULT '',
+  `uno` varchar(14) NOT NULL DEFAULT '',
+  `ocatd` varchar(21) NOT NULL DEFAULT '',
+  `status` varchar(11) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+DROP TABLE IF EXISTS `region`
+
+SELECT * 
+FROM  `kladr` 
+WHERE (
+`socr` =  'Респ'
+OR  `socr` =  'край'
+OR  `socr` =  'обл'
+OR  `socr` =  'АО'
+OR  `socr` =  'Аобл'
+OR  `socr` =  'г'
+)
+AND  `code` LIKE  '%000000000%'
+ORDER BY  `code` ASC
+LIMIT 0 , 50
+
+//Так можно узнать колличество уникальных значений
+SELECT COUNT(DISTINCT `field_1`) FROM `table`
+//Копирование базы в другое место
+CREATE TABLE db2.table LIKE db1.table;
+INSERT INTO db2.table SELECT * FROM db1.table;
+
+db2 — база в которую копируем 
+db1 — база из которой копируем 
+table — название таблицы
+
+INSERT INTO `kladr_buffer`.`aa_regions` (`id`, `dbf_id`, `number`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`)
+ VALUES (NULL, '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'), (NULL, '1', '2', '3', '4', '5', '6', '7', '8', '9', '10');
+
+
+ CREATE TABLE IF NOT EXISTS `000_street` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `dbf_id` int(11) NOT NULL,
+  `city_id` int(11) NOT NULL,
+  `name` varchar(80) NOT NULL DEFAULT '',
+  `socr` varchar(20) NOT NULL DEFAULT '',
+  `code` varchar(28) NOT NULL DEFAULT '',
+  `index` varchar(16) NOT NULL DEFAULT '',
+  `gninmb` varchar(14) NOT NULL DEFAULT '',
+  `uno` varchar(14) NOT NULL DEFAULT '',
+  `ocatd` varchar(21) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `city_id` (`city_id`),
+  KEY `dbf_id` (`dbf_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+ CREATE TABLE IF NOT EXISTS `test` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `data` varchar(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+ [RowDataPacket {
+    id: 89,
+    dbf_id: 218959,
+    number: '910',
+    name: 'Крым',
+    socr: 'Респ',
+    code: '9100000000000',
+    index: '',
+    gninmb: '9100',
+    uno: '',
+    ocatd: '35000000000',
+    status: '0' } ]
+
+SELECT * 
+FROM  `kladr` 
+WHERE (
+`socr` <>  'Респ'
+AND  `socr` <>  'край'
+AND  `socr` <>  'обл'
+AND  `socr` <>  'АО'
+AND  `socr` <>  'Аобл'
+)
+AND  `code` LIKE  '010%'
+ORDER BY  `code` ASC
+LIMIT 0 , 50
+
+INSERT INTO `kladr_buffer`.`010_city` (`id`, `dbf_id`,`region_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`) 
+VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+1702592 - сверить что там получилось
+
+//В результате получаем 218803 всего, Запрос занял 0.3972 сек. //Было примерно 3,5 секунды в первый раз
+SELECT * 
+FROM  `kladr_dbf_backup`.`kladr` 
+WHERE (
+  `socr` <>  'Респ'
+AND  `socr` <>  'край'
+AND  `socr` <>  'обл'
+AND  `socr` <>  'АО'
+AND  `socr` <>  'Аобл'
+AND  `socr` <>  'г'
+)
+ORDER BY  `code` ASC
+
+SELECT table1.field1 AS t1f1,table2.field2 AS t1f2 FROM table1,table2 WHERE table1.field3='1' AND table2.field3='1'
+
+SELECT  `010_city`.`name` AS `010`,  `020_city`.`name` AS `020`
+FROM  `kladr_buffer`.`010_city` ,  `kladr_buffer`.`020_city`
+
+(SELECT * FROM  `kladr_buffer`.`010_city`
+WHERE (`socr` <>  'Респ'
+AND  `socr` <>  'край'
+AND  `socr` <>  'обл'
+AND  `socr` <>  'АО'
+AND  `socr` <>  'Аобл'
+AND  `socr` <>  'г')) UNION 
+(SELECT * FROM  `kladr_buffer`.`020_city`
+WHERE (`socr` <>  'Респ'
+AND  `socr` <>  'край'
+AND  `socr` <>  'обл'
+AND  `socr` <>  'АО'
+AND  `socr` <>  'Аобл'
+AND  `socr` <>  'г'
+))
+ORDER BY  `code` ASC
+LIMIT 0 , 50
+
+//Главная таблица городов, деревень
+INSERT INTO `kladr_buffer`.`000_city` (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`, `status`) 
+VALUES ('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13');
+
+//Главная таблица улиц
+INSERT INTO `kladr_buffer`.`000_street` (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `street_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`) 
+VALUES ( NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+//Обычная таблица улиц
+INSERT INTO `kladr_buffer`.`010_street` (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`) 
+VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+//Главная таблица домов
+INSERT INTO `kladr_buffer`.`000_home` (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `street_id`, `home_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`) 
+VALUES ('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14');
+//Обычная таблица домов
+INSERT INTO `kladr_buffer`.`010_home` (`id`, `dbf_id`, `region_id`, `region_number`, `city_id`, `street_id`, `name`, `socr`, `code`, `index`, `gninmb`, `uno`, `ocatd`) 
+VALUES ('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13');
+
+INSERT INTO `kladr_dbf_memory`.`kladr` SELECT * FROM `kladr_dbf`.`kladr`
+
+//Загрузка таблицы в память
+ALTER TABLE  `table_1` ENGINE = MEMORY; и наоборот ALTER TABLE  `table_1` ENGINE = MYISAM ;
+
+ALTER TABLE `kladr_buffer_memory`.`table_1`,`kladr_buffer_memory`.`table_2` ENGINE = MEMORY;
+
+//Перенос таблиц из базы в базу
+RENAME TABLE
+db_old.table1 TO db_new.table1,
+    db_old.table2 TO db_new.table2,
+...
+db_old.tableN TO db_new.tableN
+;
+
+//Вид в котором приходят глобальные переменные
+RowDataPacket { Variable_name: 'max_connect_errors', Value: '10' },
+  RowDataPacket { Variable_name: 'max_connections', Value: '30' },
+  RowDataPacket { Variable_name: 'max_delayed_threads', Value: '20' },
+  RowDataPacket { Variable_name: 'max_digest_length', Value: '1024' },
+  RowDataPacket { Variable_name: 'max_error_count', Value: '64' },
+  RowDataPacket { Variable_name: 'max_heap_table_size', Value: '4294967296' },
+  RowDataPacket { Variable_name: 'max_insert_delayed_threads', Value: '20' },
+  RowDataPacket {
+
+  CREATE TABLE kladr (
+id int NOT NULL PRIMARY KEY,
+name VARCHAR(80),
+socr VARCHAR(20),
+code VARCHAR(25),
+index VARCHAR(16),
+gninmb VARCHAR(14),
+uno VARCHAR(14),
+ocatd VARCHAR(21),
+status VARCHAR(11)
+);
+
