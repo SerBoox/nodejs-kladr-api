@@ -64,7 +64,7 @@ router.get('/distribution', function (req, res, next) {
             this.dbf_log_table_information = undefined;
             this.buffer_log_table_information = undefined;
             this.buffer_region_table_information = undefined;
-            this.stage = 11;
+            this.stage = 0;
             this.finish_stage = 77;
             this.socrase_table_information = undefined;
             this.dbf_tables = {
@@ -1570,7 +1570,9 @@ router.get('/distribution', function (req, res, next) {
         Distribution.prototype.get_street_count_information = function (first_key, last_kay, start_row, finish_row, region_number, first_city_key, last_city_key, table_row) {
             var row = 0, first_row = 0, end_row = 0;
             var city_name = this.buffer_city_table_information[first_city_key].name;
-            var city_code = this.buffer_city_table_information[first_city_key].code;
+            var city_code_full = this.buffer_city_table_information[first_city_key].code;
+            var city_code_length = city_code_full.length;
+            var city_code = city_code_full.substr(0, city_code_length - 1);
             var table_name = region_number + this.street_prefix;
             //Получаем общее колличество улиц по городу
             connection.query("SELECT COUNT(*) " +
@@ -1984,7 +1986,9 @@ router.get('/distribution', function (req, res, next) {
         Distribution.prototype.get_street_count_information_memory = function (first_key, last_kay, start_row, finish_row, region_number, first_city_key, last_city_key, table_row) {
             var row = 0, first_row = 0, end_row = 0;
             var city_name = this.buffer_city_table_information[first_city_key].name;
-            var city_code = this.buffer_city_table_information[first_city_key].code;
+            var city_code_full = this.buffer_city_table_information[first_city_key].code;
+            var city_code_length = city_code_full.length;
+            var city_code = city_code_full.substr(0, city_code_length - 1);
             var table_name = region_number + this.street_prefix;
             //Получаем общее колличество улиц по городу
             connection.query("SELECT COUNT(*) " +
