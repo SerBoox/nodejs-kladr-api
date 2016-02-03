@@ -20,12 +20,14 @@ var api_main_tables = {
     regions: '000_regions',
     city: '000_city',
     street: '000_street',
-    home: '000_home'
+    home: '000_home',
+    home_parse: '000_home_parse'
 };
 
 var city_prefix = '_city';
 var street_prefix = '_street';
 var home_prefix = '_home';
+var home_parse_prefix = '_home_parse';
 
 var pageLimit = 50;
 
@@ -1618,7 +1620,7 @@ router.get('/home', function (req, res, next) {
             if (this.stage === 0) {
                 return this.open_connection();
             } else if (this.stage === 1) {
-                return this.find_all_street(this.API_MySQL_DB_Name, api_main_tables.home, home_prefix);
+                return this.find_all_homes(this.API_MySQL_DB_Name, api_main_tables.home_parse, home_parse_prefix);
             }
 
             this.close_connection();
@@ -1654,7 +1656,7 @@ router.get('/home', function (req, res, next) {
 
         };
 
-        Home.prototype.find_all_street = function (name_database, name_table, prefix) {
+        Home.prototype.find_all_homes = function (name_database, name_table, prefix) {
             var data = [], dataLength, query, parameters, homes = [], response = {}, i;
             var sendRegionNumber = 0, sendRegionNumberLength = 0;
             var start_time = new Date().getTime();
@@ -1662,7 +1664,7 @@ router.get('/home', function (req, res, next) {
             var page = (parseInt(req.query.page, 10) > 0) ? parseInt(req.query.page, 10) : 0;
             var pageNumber = (page > 1) ? ((page - 1) * pageLimit) : 0;
 
-            query = "SELECT `dbf_id`,`region_id`,`region_number`,`city_id`,`street_id`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
+            query = "SELECT `id`,`region_id`,`region_number`,`city_id`,`street_id`,`socrname`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
                 + "FROM  ??.?? LIMIT ? , ?";
             parameters = [name_database, name_table, pageNumber, pageLimit];
 
@@ -1688,11 +1690,12 @@ router.get('/home', function (req, res, next) {
                         sendRegionNumber = (data[i].region_number.toString().slice(sendRegionNumberLength - 1, sendRegionNumberLength) == 0) ? data[i].region_number.toString().slice(0, sendRegionNumberLength - 1) : data[i].region_number;
 
                         homes[i] = {
-                            id: data[i].dbf_id,
+                            id: data[i].id,
                             region_id: data[i].region_id,
                             region_number: parseInt(sendRegionNumber, 10),
                             city_id: data[i].city_id,
                             street_id: data[i].street_id,
+                            socrname: data[i].socrname,
                             name: data[i].name,
                             socr: data[i].socr,
                             kladr_code: data[i].code,
@@ -1763,7 +1766,7 @@ router.get('/home/name', function (req, res, next) {
             if (this.stage === 0) {
                 return this.open_connection();
             } else if (this.stage === 1) {
-                return this.find_home_where_name(this.API_MySQL_DB_Name, api_main_tables.home, home_prefix);
+                return this.find_home_where_name(this.API_MySQL_DB_Name, api_main_tables.home_parse, home_parse_prefix);
             }
 
             this.close_connection();
@@ -1815,7 +1818,7 @@ router.get('/home/name', function (req, res, next) {
             var pageNumber = (page > 1) ? ((page - 1) * pageLimit) : 0;
 
             var query = '';
-            var queryHeader = "SELECT `dbf_id`,`region_id`,`region_number`,`city_id`,`street_id`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`  FROM  ??.?? WHERE ";
+            var queryHeader = "SELECT `id`,`region_id`,`region_number`,`city_id`,`street_id`,`socrname`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`  FROM  ??.?? WHERE ";
             var queryTail = " LIMIT ? , ?";
             var parameters = [];
             var parametersHeader = [name_database, name_table];
@@ -1837,7 +1840,7 @@ router.get('/home/name', function (req, res, next) {
                     parameters = parameters.concat([name]);
                 }
             }else {
-                query = "SELECT `dbf_id`,`region_id`,`region_number`,`city_id`,`street_id`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
+                query = "SELECT `id`,`region_id`,`region_number`,`city_id`,`street_id`,`socrname`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
                     + "FROM  ??.?? ";
             }
             query += queryTail;
@@ -1864,11 +1867,12 @@ router.get('/home/name', function (req, res, next) {
                         sendRegionNumber = (data[i].region_number.toString().slice(sendRegionNumberLength - 1, sendRegionNumberLength) == 0) ? data[i].region_number.toString().slice(0, sendRegionNumberLength - 1) : data[i].region_number;
 
                         homes[i] = {
-                            id: data[i].dbf_id,
+                            id: data[i].id,
                             region_id: data[i].region_id,
                             region_number: parseInt(sendRegionNumber, 10),
                             city_id: data[i].city_id,
                             street_id: data[i].street_id,
+                            socrname: data[i].socrname,
                             name: data[i].name,
                             socr: data[i].socr,
                             kladr_code: data[i].code,
@@ -1939,7 +1943,7 @@ router.get('/home/id', function (req, res, next) {
             if (this.stage === 0) {
                 return this.open_connection();
             } else if (this.stage === 1) {
-                return this.find_home_where_id(this.API_MySQL_DB_Name, api_main_tables.home, home_prefix);
+                return this.find_home_where_id(this.API_MySQL_DB_Name, api_main_tables.home_parse, home_parse_prefix);
             }
 
             this.close_connection();
@@ -1986,11 +1990,11 @@ router.get('/home/id', function (req, res, next) {
             var pageNumber = (page > 1) ? ((page - 1) * pageLimit) : 0;
 
             if (id > 0) {
-                query = "SELECT `dbf_id`,`region_id`,`region_number`,`city_id`,`street_id`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`" +
-                    " FROM  ??.?? WHERE `dbf_id` = ? LIMIT ? , ?";
+                query = "SELECT `id`,`region_id`,`region_number`,`city_id`,`street_id`,`socrname`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`" +
+                    " FROM  ??.?? WHERE `id` = ? LIMIT ? , ?";
                 parameters = [name_database, name_table, id, pageNumber, pageLimit];
             } else {
-                query = "SELECT `dbf_id`,`region_id`,`region_number`,`city_id`,`street_id`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
+                query = "SELECT `id`,`region_id`,`region_number`,`city_id`,`street_id`,`socrname`,`name`,`socr`,`code`,`index`,`gninmb`,`ocatd`"
                     + "FROM  ??.?? LIMIT ? , ?";
                 parameters = [name_database, name_table, pageNumber, pageLimit];
             }
@@ -2013,11 +2017,12 @@ router.get('/home/id', function (req, res, next) {
                         sendRegionNumberLength = data[i].region_number.toString().length;
                         sendRegionNumber = (data[i].region_number.toString().slice(sendRegionNumberLength - 1, sendRegionNumberLength) == 0) ? data[i].region_number.toString().slice(0, sendRegionNumberLength - 1) : data[i].region_number;
                         homes[i] = {
-                            id: data[i].dbf_id,
+                            id: data[i].id,
                             region_id: data[i].region_id,
                             region_number: parseInt(sendRegionNumber, 10),
                             city_id: data[i].city_id,
                             street_id: data[i].street_id,
+                            socrname: data[i].socrname,
                             name: data[i].name,
                             socr: data[i].socr,
                             kladr_code: data[i].code,

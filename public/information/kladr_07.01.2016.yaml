@@ -445,7 +445,7 @@ paths:
         -
           name: name
           in: query
-          description: имя города
+          description: название, например (двлд6к1,двлд8)
           required: false
           type: string
         -
@@ -843,6 +843,9 @@ definitions:
                   type: number
                   description: id города
                   format: int
+                socrname:
+                  type: string
+                  description: название, например (6к1,8)  
                 name:
                   type: string
                   description: название, например (двлд6к1,двлд8)
@@ -884,6 +887,9 @@ definitions:
           type: number
           description: id города
           format: int
+        socrname:
+          type: string
+          description: название, например (6к1,8)
         name:
           type: string
           description: название, например (двлд6к1,двлд8)
