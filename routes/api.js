@@ -1357,7 +1357,7 @@ router.get('/street/name', function (req, res, next) {
                 parameters = parameters.concat([region_number]);
             }
 
-            if ((region_id === undefined) && (region_number === undefined) && (name !== undefined)) {
+            if ((city_id === undefined) && (region_id === undefined) && (region_number === undefined) && (name !== undefined)) {
                 query += " `name` LIKE ? ";
                 parameters = parameters.concat([name]);
             } else if (name !== undefined) {
