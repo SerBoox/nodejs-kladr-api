@@ -68,4 +68,4 @@ function getMySQLObject(mysql_table, data) {
             break;
     }
 }
-module.exports = getMySQLObject
+module.exports = getMySQLObject;
